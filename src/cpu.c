@@ -93,6 +93,9 @@ void imprimirLog(const char *mensaje) {
     printf("[CPU][Ciclo %d] %s\n", contadorCiclos, mensaje);
 }
 
+/* Prototipo de helper para reconstruir instruccion completa desde Palabra */
+static int instruccionCompletaDesdePalabra(Palabra p);
+
 /*
  * Imprime el estado actual de todos los registros del CPU.
  */
@@ -100,8 +103,9 @@ void imprimirEstadoCpu() {
     printf("\n========== ESTADO DEL CPU ==========\n");
     printf("AC:  %s%07d\n", registrosCpu.ac.signo ? "-" : "+", registrosCpu.ac.digitos);
     printf("PC:  %05d (logico)\n", registrosCpu.psw.pc);
-    printf("MAR: %s%07d\n", registrosCpu.mar.signo ? "-" : "+", registrosCpu.mar.digitos);
-    printf("MDR: %s%07d\n", registrosCpu.mdr.signo ? "-" : "+", registrosCpu.mdr.digitos);
+    printf("MAR: %s%07d (fisica)\n", registrosCpu.mar.signo ? "-" : "+", registrosCpu.mar.digitos);
+    /* Mostrar MDR y la instruccion completa reconstruida */
+    printf("MDR: %s%07d   RAW=%08d\n", registrosCpu.mdr.signo ? "-" : "+", registrosCpu.mdr.digitos, instruccionCompletaDesdePalabra(registrosCpu.mdr));
     printf("IR:  Op=%02d Dir=%d Val=%05d\n", 
            registrosCpu.ir.codigoOperacion,
            registrosCpu.ir.direccionamiento,
@@ -116,12 +120,19 @@ void imprimirEstadoCpu() {
 }
 
 /*
+ * Obtiene el valor numerico completo de una Palabra (8 digitos) tal como
+ * fue almacenado por el loader. Esto reconstruye instruccion completa.
+ */
+static int instruccionCompletaDesdePalabra(Palabra p) {
+    return p.signo * 10000000 + p.digitos;
+}
+
+/*
  * Verifica si una instruccion es el centinela de fin de programa.
  */
 int esCentinela(Palabra instruccion) {
-    // El centinela es opcode 99 que no existe o valor 99999999
-    // Como hemos unificado a signo 0 y 8 digitos:
-    return (instruccion.digitos == VALOR_CENTINELA);
+    int completa = instruccionCompletaDesdePalabra(instruccion);
+    return (completa == VALOR_CENTINELA);
 }
 
 /*
@@ -401,14 +412,15 @@ int cicloCpu() {
  */
 void faseFetch() {
     int direccionFisica;
+    int pcLogica = registrosCpu.psw.pc;  // Guardar PC logico actual
     
-    // MAR <- PC (direccion logica)
-    registrosCpu.mar = enteroAPalabra(registrosCpu.psw.pc);
+    // Traducir a direccion fisica desde el PC logico
+    direccionFisica = traducirDireccion(pcLogica);
+
+    // MAR <- direccion fisica (como Palabra) para registro y debug
+    registrosCpu.mar = enteroAPalabra(direccionFisica);
     
-    // Traducir a direccion fisica
-    direccionFisica = traducirDireccion(registrosCpu.psw.pc);
-    
-    // Verificar proteccion de memoria
+    // Verificar proteccion de memoria (en direccion fisica)
     if (!verificarProteccionMemoria(direccionFisica)) {
         interrupcionPendiente = 1;
         codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
@@ -418,7 +430,7 @@ void faseFetch() {
     // MDR <- memoria[direccion_fisica]
     registrosCpu.mdr = leerMemoria(direccionFisica);
     
-    // PC <- PC + 1
+    // PC <- PC + 1 (logico)
     registrosCpu.psw.pc++;
 }
 
@@ -426,20 +438,19 @@ void faseFetch() {
  * Fase DECODE: Decodifica la instruccion en IR.
  */
 void faseDecode() {
-    // IR <- MDR (la instruccion esta en MDR)
-    // Formato: [Signo][OODDVVVVV] donde OO=opcode, D=modo, VVVVV=valor
-    int instruccionCompleta = registrosCpu.mdr.digitos;
-    
-    // Extraer campos de la instruccion
-    // Los 7 digitos: OODVVVVV
-    registrosCpu.ir.codigoOperacion = instruccionCompleta / 100000;        // Primeros 2
-    registrosCpu.ir.direccionamiento = (instruccionCompleta / 10000) % 10; // 3er digito
-    registrosCpu.ir.valor = instruccionCompleta % 10000;                   // Ultimos 5
-    
-    // Ajustar si el valor tiene 5 digitos (puede ser hasta 99999)
-    registrosCpu.ir.valor = instruccionCompleta % 100000;
-    registrosCpu.ir.direccionamiento = (instruccionCompleta / 100000) % 10;
-    registrosCpu.ir.codigoOperacion = instruccionCompleta / 1000000;
+    // IR <- reconstruir desde MDR (la instruccion esta en MDR)
+    // Reconstruimos el entero de 8 digitos que almacena el loader
+    int instruccionCompleta = instruccionCompletaDesdePalabra(registrosCpu.mdr);
+
+    // Extraer campos: OO D VVVVV (OO=2 digitos, D=1 digito, VVVVV=5 digitos)
+    registrosCpu.ir.codigoOperacion = instruccionCompleta / 1000000;             // primeros 2 digitos
+    registrosCpu.ir.direccionamiento = (instruccionCompleta / 100000) % 10;      // tercer digito
+    registrosCpu.ir.valor = instruccionCompleta % 100000;                       // ultimos 5 digitos
+
+    // Validaciones basicas (si se desea, se pueden ampliar)
+    if (registrosCpu.ir.codigoOperacion < 0 || registrosCpu.ir.codigoOperacion > 99) {
+        imprimirLog("WARNING: Opcode fuera de rango en decode");
+    }
 }
 
 /*
@@ -624,7 +635,13 @@ int faseExecute() {
             break;
             
         case OP_RETRN:  // 14: Retorno de subrutina (PRIVILEGIADA)
-            // Pop PC de la pila
+            // Pop PC de la pila (verificar underflow)
+            if (registrosCpu.sp >= registrosCpu.rx) {
+                imprimirLog("ERROR: Stack underflow al hacer RETRN");
+                interrupcionPendiente = 1;
+                codigoInterrupcionPendiente = INT_UNDERFLOW;
+                return 1;
+            }
             registrosCpu.psw.pc = palabraAEntero(leerMemoria(registrosCpu.sp));
             registrosCpu.sp++;
             break;
@@ -662,7 +679,17 @@ int faseExecute() {
             break;
             
         case OP_STRRB:  // 20: RB = AC
-            registrosCpu.rb = palabraAEntero(registrosCpu.ac);
+            {
+                int nuevoRB = palabraAEntero(registrosCpu.ac);
+                // RB debe estar dentro del espacio de usuario y menor que RL
+                if (nuevoRB < INICIO_MEMORIA_USUARIO || nuevoRB >= registrosCpu.rl) {
+                    imprimirLog("ERROR: Valor invalido para RB");
+                    interrupcionPendiente = 1;
+                    codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
+                    return 1;
+                }
+                registrosCpu.rb = nuevoRB;
+            }
             break;
             
         case OP_LOADRL:  // 21: AC = RL
@@ -670,7 +697,17 @@ int faseExecute() {
             break;
             
         case OP_STRRL:  // 22: RL = AC
-            registrosCpu.rl = palabraAEntero(registrosCpu.ac);
+            {
+                int nuevoRL = palabraAEntero(registrosCpu.ac);
+                // RL >= RB y dentro de memoria
+                if (nuevoRL < registrosCpu.rb || nuevoRL >= TAMANO_MEMORIA) {
+                    imprimirLog("ERROR: Valor invalido para RL");
+                    interrupcionPendiente = 1;
+                    codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
+                    return 1;
+                }
+                registrosCpu.rl = nuevoRL;
+            }
             break;
             
         case OP_LOADSP:  // 23: AC = SP
@@ -678,7 +715,17 @@ int faseExecute() {
             break;
             
         case OP_STRSP:  // 24: SP = AC
-            registrosCpu.sp = palabraAEntero(registrosCpu.ac);
+            {
+                int nuevoSP = palabraAEntero(registrosCpu.ac);
+                // SP debe estar entre RB y RX (inclusive RX es base de pila)
+                if (nuevoSP < registrosCpu.rb || nuevoSP > registrosCpu.rx) {
+                    imprimirLog("ERROR: Valor invalido para SP");
+                    interrupcionPendiente = 1;
+                    codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
+                    return 1;
+                }
+                registrosCpu.sp = nuevoSP;
+            }
             break;
             
         /* ===== GRUPO 7: PILA ===== */
@@ -694,7 +741,8 @@ int faseExecute() {
             break;
             
         case OP_POP:  // 26: Pop de pila a AC
-            if (registrosCpu.sp > registrosCpu.rx) {
+            // Underflow: SP == RX => pila vacia
+            if (registrosCpu.sp >= registrosCpu.rx) {
                 imprimirLog("ERROR: Stack underflow");
                 interrupcionPendiente = 1;
                 codigoInterrupcionPendiente = INT_UNDERFLOW;
@@ -702,7 +750,7 @@ int faseExecute() {
             }
             registrosCpu.ac = leerMemoria(registrosCpu.sp);
             registrosCpu.sp++;
-            break;
+            break; 
             
         /* ===== GRUPO 8: SALTO INCONDICIONAL ===== */
         case OP_J:  // 27: PC = direccion (salto incondicional)

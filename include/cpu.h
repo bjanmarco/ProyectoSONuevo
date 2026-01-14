@@ -17,7 +17,10 @@
 /* Estructura para guardar contexto (usado en interrupciones) */
 /* NOTA MULTIPROGRAMACION: Esto formaria parte del PCB en un sistema real */
 typedef struct {
-    Palabra ac;
+    Palabra ac;      // Acumulador
+    Palabra mar;     // MAR al momento de la interrupcion
+    Palabra mdr;     // MDR al momento de la interrupcion
+    RegistroIr ir;   // IR al momento de la interrupcion
     int rb;
     int rl;
     int rx;
