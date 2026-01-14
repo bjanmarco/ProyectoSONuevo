@@ -1,0 +1,6 @@
+_start 0
+.NumeroPalabras 3
+.NombreProg OVR
+04199999
+02199999
+05000000

@@ -1,20 +1,29 @@
 ================================================================================
  MAQUINA VIRTUAL - LOG DE SISTEMA
- Iniciado: 22:50:15
+ Iniciado: 06:09:04
  Archivo: maquina_virtual.log
 ================================================================================
 
-[22:50:15][SIS] Maquina virtual iniciada
-[22:50:15][SIS] Memoria inicializada
-[22:50:15][SIS] Disco inicializado
-[22:50:15][SIS] DMA inicializado
-[22:50:15][SIS] Loader inicializado
-[22:50:15][SIS] CPU inicializado
-[22:50:24][SIS] Comando recibido: cargar prog_sum.prog
-[22:50:24][LOADER] Iniciando carga de: prog_sum.prog
-[22:50:24][LOADER] Programa cargado exitosamente
-[22:50:46][SIS] Comando recibido: run
-[22:50:46][SIS] Iniciando ejecucion en modo NORMAL
-[22:50:46][CPU] Iniciando ejecucion en modo normal
-[22:50:46][CPU] Ejecucion normal finalizada
-[22:50:46][SIS] Ejecucion finalizada
+[06:09:04][SIS] Maquina virtual iniciada
+[06:09:04][SIS] Memoria inicializada
+[06:09:04][SIS] Disco inicializado
+[06:09:04][SIS] DMA inicializado
+[06:09:04][SIS] Loader inicializado
+[06:09:04][SIS] CPU inicializado
+[06:09:13][SIS] Comando recibido: cargar DIV0.txt
+[06:09:13][LOADER] Iniciando carga de: DIV0.txt
+[06:09:13][LOADER] Programa cargado exitosamente
+[06:09:14][SIS] Comando recibido: run
+[06:09:14][SIS] Iniciando ejecucion en modo NORMAL
+[06:09:14][CPU] Iniciando ejecucion en modo normal
+[06:09:14][CPU] Ejecucion normal finalizada
+[06:09:14][SIS] Ejecucion finalizada
+[06:09:16][SIS] Comando recibido: reg
+[06:09:24][SIS] Comando recibido: cargar ARI.txt
+[06:09:24][LOADER] Iniciando carga de: ARI.txt
+[06:09:24][LOADER] Programa cargado exitosamente
+[06:09:26][SIS] Comando recibido: run
+[06:09:26][SIS] Iniciando ejecucion en modo NORMAL
+[06:09:26][CPU] Iniciando ejecucion en modo normal
+[06:09:26][CPU] Ejecucion normal finalizada
+[06:09:26][SIS] Ejecucion finalizada

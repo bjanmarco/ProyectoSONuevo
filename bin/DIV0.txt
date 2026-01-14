@@ -1,0 +1,6 @@
+_start 0
+.NumeroPalabras 3
+.NombreProg DIV0
+04100010
+03100000
+05000000
