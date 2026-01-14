@@ -1,0 +1,24 @@
+================================================================================
+ MAQUINA VIRTUAL - LOG DE SISTEMA
+ Iniciado: 23:22:26
+ Archivo: maquina_virtual.log
+================================================================================
+
+[23:22:26][SIS] Maquina virtual iniciada
+[23:22:26][SIS] Memoria inicializada
+[23:22:26][SIS] Disco inicializado
+[23:22:26][SIS] DMA inicializado
+[23:22:26][SIS] Loader inicializado
+[23:22:26][SIS] CPU inicializado
+[23:22:32][SIS] Comando recibido: ayuda
+[23:22:40][SIS] Comando recibido: cargar ejemplo1.prog
+[23:22:40][LOADER] Iniciando carga de: ejemplo1.prog
+[23:22:40][LOADER] Programa cargado exitosamente
+[23:22:53][SIS] Comando recibido: registers
+[23:23:05][SIS] Comando recibido: registros
+[23:23:50][SIS] Comando recibido: run
+[23:23:50][SIS] Iniciando ejecucion en modo NORMAL
+[23:23:50][CPU] Iniciando ejecucion en modo normal
+[23:23:50][CPU] Ejecucion normal finalizada
+[23:23:50][SIS] Ejecucion finalizada
+[23:26:32][SIS] Comando recibido: registros
