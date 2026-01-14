@@ -62,6 +62,5 @@ int palabraAEntero(Palabra p);
 Palabra enteroAPalabra(int val);
 void imprimirEstadoCpu();
 void imprimirLog(const char *mensaje);
-int esCentinela(Palabra instruccion);
 
 #endif /* CPU_H */

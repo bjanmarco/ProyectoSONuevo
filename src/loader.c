@@ -218,12 +218,8 @@ int cargarPrograma(const char *rutaArchivo) {
                i, direccionBase + i, buffer[i].signo, buffer[i].digitos);
     }
 
-    // Colocar centinela justo despues del programa
-    int direccionCentinela = direccionBase + bufferLen;
-    instruccion.signo = CENTINELA_SIGNO;
-    instruccion.digitos = CENTINELA_DIGITOS;
-    escribirMemoria(direccionCentinela, instruccion);
-    printf("[LOADER] Centinela colocado en direccion %d\n", direccionCentinela);
+    // No colocar centinela: RL apunta a la ultima instruccion del programa (inclusivo)
+    int direccionUltimaInstr = direccionBase + bufferLen - 1;
 
     // Guardar informacion del programa
     strncpy(programaActual.nombre, nombrePrograma, MAX_NOMBRE_PROGRAMA - 1);
@@ -231,8 +227,8 @@ int cargarPrograma(const char *rutaArchivo) {
     programaActual.lineaInicio = lineaInicio;
     programaActual.numeroPalabras = bufferLen;
     programaActual.direccionBase = direccionBase;
-    // RL = ultima direccion valida (base + numeroPalabras - 1)
-    programaActual.direccionLimite = direccionBase + bufferLen - 1;
+    // RL = direccion de la ultima instruccion (base + numeroPalabras - 1)
+    programaActual.direccionLimite = direccionUltimaInstr;
 
     printf("[LOADER] ============================================\n");
     printf("[LOADER] Programa '%s' cargado exitosamente\n", programaActual.nombre);
@@ -242,8 +238,8 @@ int cargarPrograma(const char *rutaArchivo) {
     printf("[LOADER] PC inicial (logico): %d\n", lineaInicio);
     printf("[LOADER] ============================================\n");
 
-    // Actualizar siguiente direccion disponible (despues de centinela)
-    siguienteDireccionDisponible = direccionCentinela + 1;
+    // Actualizar siguiente direccion disponible (despues del programa)
+    siguienteDireccionDisponible = direccionBase + bufferLen;
 
     free(buffer);
     return 0;  // Exito
@@ -257,7 +253,7 @@ int cargarPrograma(const char *rutaArchivo) {
 void prepararEjecucion() {
     // Establecer registros de proteccion
     registrosCpu.rb = programaActual.direccionBase;
-    registrosCpu.rl = programaActual.direccionLimite; // RL = ultima direccion valida
+    registrosCpu.rl = programaActual.direccionLimite; // RL = direccion de la ultima instruccion (incluido)
 
     // Establecer PC en la linea de inicio (direccion logica)
     registrosCpu.psw.pc = programaActual.lineaInicio;

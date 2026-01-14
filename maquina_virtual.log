@@ -1,29 +1,29 @@
 ================================================================================
  MAQUINA VIRTUAL - LOG DE SISTEMA
- Iniciado: 21:42:29
+ Iniciado: 23:26:26
  Archivo: maquina_virtual.log
 ================================================================================
 
-[21:42:29][SIS] Maquina virtual iniciada
-[21:42:29][SIS] Memoria inicializada
-[21:42:29][SIS] Disco inicializado
-[21:42:29][SIS] DMA inicializado
-[21:42:29][SIS] Loader inicializado
-[21:42:29][SIS] CPU inicializado
-[21:42:29][SIS] Comando recibido: cargar bin/prog_underflow.prog
-[21:42:29][LOADER] Iniciando carga de: bin/prog_underflow.prog
-[21:42:29][LOADER] Programa cargado exitosamente
-[21:42:29][SIS] Comando recibido: run
-[21:42:29][SIS] Iniciando ejecucion en modo NORMAL
-[21:42:29][CPU] Iniciando ejecucion en modo normal
-[21:42:29][CPU] Ejecucion normal finalizada
-[21:42:29][SIS] Ejecucion finalizada
-[21:42:29][SIS] Comando recibido: salir
-[21:42:29][SIS] Usuario solicito salir
-[21:42:29][SIS] Finalizando maquina virtual
+[23:26:26][SIS] Maquina virtual iniciada
+[23:26:26][SIS] Memoria inicializada
+[23:26:26][SIS] Disco inicializado
+[23:26:26][SIS] DMA inicializado
+[23:26:26][SIS] Loader inicializado
+[23:26:26][SIS] CPU inicializado
+[23:26:26][SIS] Comando recibido: cargar bin/prog_sum.prog
+[23:26:26][LOADER] Iniciando carga de: bin/prog_sum.prog
+[23:26:26][LOADER] Programa cargado exitosamente
+[23:26:26][SIS] Comando recibido: run
+[23:26:26][SIS] Iniciando ejecucion en modo NORMAL
+[23:26:26][CPU] Iniciando ejecucion en modo normal
+[23:26:26][CPU] Ejecucion normal finalizada
+[23:26:26][SIS] Ejecucion finalizada
+[23:26:26][SIS] Comando recibido: salir
+[23:26:26][SIS] Usuario solicito salir
+[23:26:26][SIS] Finalizando maquina virtual
 
 ================================================================================
  FIN DEL LOG
- Finalizado: 21:42:29
+ Finalizado: 23:26:26
  Total lineas: 17
 ================================================================================
