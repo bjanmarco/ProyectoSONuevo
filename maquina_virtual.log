@@ -1,29 +1,29 @@
 ================================================================================
  MAQUINA VIRTUAL - LOG DE SISTEMA
- Iniciado: 23:26:26
+ Iniciado: 23:30:34
  Archivo: maquina_virtual.log
 ================================================================================
 
-[23:26:26][SIS] Maquina virtual iniciada
-[23:26:26][SIS] Memoria inicializada
-[23:26:26][SIS] Disco inicializado
-[23:26:26][SIS] DMA inicializado
-[23:26:26][SIS] Loader inicializado
-[23:26:26][SIS] CPU inicializado
-[23:26:26][SIS] Comando recibido: cargar bin/prog_sum.prog
-[23:26:26][LOADER] Iniciando carga de: bin/prog_sum.prog
-[23:26:26][LOADER] Programa cargado exitosamente
-[23:26:26][SIS] Comando recibido: run
-[23:26:26][SIS] Iniciando ejecucion en modo NORMAL
-[23:26:26][CPU] Iniciando ejecucion en modo normal
-[23:26:26][CPU] Ejecucion normal finalizada
-[23:26:26][SIS] Ejecucion finalizada
-[23:26:26][SIS] Comando recibido: salir
-[23:26:26][SIS] Usuario solicito salir
-[23:26:26][SIS] Finalizando maquina virtual
+[23:30:34][SIS] Maquina virtual iniciada
+[23:30:34][SIS] Memoria inicializada
+[23:30:34][SIS] Disco inicializado
+[23:30:34][SIS] DMA inicializado
+[23:30:34][SIS] Loader inicializado
+[23:30:34][SIS] CPU inicializado
+[23:30:34][SIS] Comando recibido: cargar bin/prog_two_instructions.prog
+[23:30:34][LOADER] Iniciando carga de: bin/prog_two_instructions.prog
+[23:30:34][LOADER] Programa cargado exitosamente
+[23:30:34][SIS] Comando recibido: run
+[23:30:34][SIS] Iniciando ejecucion en modo NORMAL
+[23:30:34][CPU] Iniciando ejecucion en modo normal
+[23:30:34][CPU] Ejecucion normal finalizada
+[23:30:34][SIS] Ejecucion finalizada
+[23:30:34][SIS] Comando recibido: salir
+[23:30:34][SIS] Usuario solicito salir
+[23:30:34][SIS] Finalizando maquina virtual
 
 ================================================================================
  FIN DEL LOG
- Finalizado: 23:26:26
+ Finalizado: 23:30:34
  Total lineas: 17
 ================================================================================
