@@ -1,29 +1,20 @@
 ================================================================================
  MAQUINA VIRTUAL - LOG DE SISTEMA
- Iniciado: 06:09:04
+ Iniciado: 23:25:30
  Archivo: maquina_virtual.log
 ================================================================================
 
-[06:09:04][SIS] Maquina virtual iniciada
-[06:09:04][SIS] Memoria inicializada
-[06:09:04][SIS] Disco inicializado
-[06:09:04][SIS] DMA inicializado
-[06:09:04][SIS] Loader inicializado
-[06:09:04][SIS] CPU inicializado
-[06:09:13][SIS] Comando recibido: cargar DIV0.txt
-[06:09:13][LOADER] Iniciando carga de: DIV0.txt
-[06:09:13][LOADER] Programa cargado exitosamente
-[06:09:14][SIS] Comando recibido: run
-[06:09:14][SIS] Iniciando ejecucion en modo NORMAL
-[06:09:14][CPU] Iniciando ejecucion en modo normal
-[06:09:14][CPU] Ejecucion normal finalizada
-[06:09:14][SIS] Ejecucion finalizada
-[06:09:16][SIS] Comando recibido: reg
-[06:09:24][SIS] Comando recibido: cargar ARI.txt
-[06:09:24][LOADER] Iniciando carga de: ARI.txt
-[06:09:24][LOADER] Programa cargado exitosamente
-[06:09:26][SIS] Comando recibido: run
-[06:09:26][SIS] Iniciando ejecucion en modo NORMAL
-[06:09:26][CPU] Iniciando ejecucion en modo normal
-[06:09:26][CPU] Ejecucion normal finalizada
-[06:09:26][SIS] Ejecucion finalizada
+[23:25:30][SIS] Maquina virtual iniciada
+[23:25:30][SIS] Memoria inicializada
+[23:25:30][SIS] Disco inicializado
+[23:25:30][SIS] DMA inicializado
+[23:25:30][SIS] Loader inicializado
+[23:25:30][SIS] CPU inicializado
+[23:25:42][SIS] Comando recibido: cargar ARI.txt
+[23:25:42][LOADER] Iniciando carga de: ARI.txt
+[23:25:42][LOADER] Programa cargado exitosamente
+[23:25:47][SIS] Comando recibido: run
+[23:25:47][SIS] Iniciando ejecucion en modo NORMAL
+[23:25:47][CPU] Iniciando ejecucion en modo normal
+[23:25:47][CPU] Ejecucion normal finalizada
+[23:25:47][SIS] Ejecucion finalizada
