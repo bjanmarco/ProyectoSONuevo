@@ -35,7 +35,7 @@ int interrupcionPendiente = 0;
 int codigoInterrupcionPendiente = -1;
 
 // Contexto guardado para restaurar despues de interrupcion
-static ContextoCpu contextoGuardado;
+// Ya no usamos un contexto guardado global; las funciones usan el paso por referencia.
 
 /* ============================================================================
  * NOTA: La memoria se define en memoria.c y se accede via leerMemoria()
@@ -116,10 +116,16 @@ void imprimirEstadoCpu() {
 }
 
 /*
- * Fin de programa: Se determina exclusivamente por los registros RB y RL.
- * RL apunta a la ultima instruccion valida (inclusivo).
- * La deteccion por centinela fue eliminada y el loader ya no escribe centinelas.
+ * Verifica si una instruccion es el centinela de fin de programa.
  */
+int esCentinela(Palabra instruccion) {
+    // El centinela puede representarse como el valor maximo 99999999
+    // o como un opcode 99 en la porcion de opcode. Comprobamos ambas.
+    if (instruccion.digitos == 99999999) return 1;
+    // Extraer posible opcode (si la instruccion tiene formato compacto)
+    if (instruccion.digitos / 1000000 == 99) return 1;
+    return 0;
+}
 
 /*
  * Traduce una direccion logica a fisica usando el Registro Base (RB).
@@ -279,9 +285,9 @@ void inicializarCpu() {
     registrosCpu.rb = INICIO_MEMORIA_USUARIO;  // 300
     registrosCpu.rl = TAMANO_MEMORIA - 1;      // 1999
     
-    // Inicializar pila al final de la memoria
-    registrosCpu.rx = TAMANO_MEMORIA - 1;  // Base de pila
-    registrosCpu.sp = TAMANO_MEMORIA - 1;  // Tope de pila
+    // Inicializar pila al final de la memoria (RX es base fija)
+    registrosCpu.rx = TAMANO_MEMORIA - 1;  // Base fija de pila (1999)
+    registrosCpu.sp = TAMANO_MEMORIA - 1;  // Tope de pila (cambia durante ejecucion)
     
     // Inicializar PSW
     registrosCpu.psw.codigoCondicion = CC_CERO;
@@ -300,7 +306,7 @@ void inicializarCpu() {
 }
 
 /*
- * Bucle principal del CPU. Ejecuta ciclos hasta fin de programa (segun RB/RL) o error fatal.
+ * Bucle principal del CPU. Ejecuta ciclos hasta centinela o error fatal.
  */
 void ejecutarCpu() {
     cpuEjecutando = 1;
@@ -369,24 +375,15 @@ void ejecutarCpu() {
 int cicloCpu() {
     char buffer[100];
     
-    // Antes de FETCH: verificar fin por RL inclusivo o PC fuera de RB
-    int direccionFisicaPC = traducirDireccion(registrosCpu.psw.pc);
-    // Si PC > RL -> fin del programa (RL es inclusivo)
-    if (direccionFisicaPC > registrosCpu.rl) {
-        imprimirLog("Fin del programa: PC > RL (RL inclusivo)");
+    // 1. FETCH
+    faseFetch();
+    
+    // Verificar si es centinela
+    if (esCentinela(registrosCpu.mdr)) {
+        imprimirLog("Centinela detectado - Fin del programa");
         cpuEjecutando = 0;
         return 0;
     }
-    // Si PC < RB -> direccion invalida
-    if (direccionFisicaPC < registrosCpu.rb) {
-        imprimirLog("ERROR: PC < RB - Direccion invalida");
-        interrupcionPendiente = 1;
-        codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
-        return 1;
-    }
-
-    // 1. FETCH
-    faseFetch();
     
     // 2. DECODE
     faseDecode();
@@ -433,13 +430,19 @@ void faseFetch() {
  */
 void faseDecode() {
     // IR <- MDR (la instruccion esta en MDR)
-    // Formato: [Signo][OODDVVVVV] donde OO=opcode (2d), D=modo (1d), VVVVV=valor (5d)
+    // Formato: [Signo][OODDVVVVV] donde OO=opcode, D=modo, VVVVV=valor
     int instruccionCompleta = registrosCpu.mdr.digitos;
-
-    // Extraer campos de la instruccion (8 digitos totales)
-    registrosCpu.ir.codigoOperacion = instruccionCompleta / 1000000;        // Primeros 2
-    registrosCpu.ir.direccionamiento = (instruccionCompleta / 100000) % 10; // 3er digito
-    registrosCpu.ir.valor = instruccionCompleta % 100000;                   // Ultimos 5
+    
+    // Extraer campos de la instruccion
+    // Los 7 digitos: OODVVVVV
+    registrosCpu.ir.codigoOperacion = instruccionCompleta / 100000;        // Primeros 2
+    registrosCpu.ir.direccionamiento = (instruccionCompleta / 10000) % 10; // 3er digito
+    registrosCpu.ir.valor = instruccionCompleta % 10000;                   // Ultimos 5
+    
+    // Ajustar si el valor tiene 5 digitos (puede ser hasta 99999)
+    registrosCpu.ir.valor = instruccionCompleta % 100000;
+    registrosCpu.ir.direccionamiento = (instruccionCompleta / 100000) % 10;
+    registrosCpu.ir.codigoOperacion = instruccionCompleta / 1000000;
 }
 
 /*
@@ -539,7 +542,8 @@ int faseExecute() {
             break;
             
         case OP_STRRX:  // 07: RX = AC
-            registrosCpu.rx = palabraAEntero(registrosCpu.ac);
+            imprimirLog("Advertencia: RX es base fija de la pila y no puede modificarse");
+            // RX se mantiene fijo en TAMANO_MEMORIA - 1 según especificación
             break;
             
         /* ===== GRUPO 4: COMPARACION Y SALTOS ===== */
@@ -812,7 +816,6 @@ void guardarContexto(ContextoCpu *contexto) {
     contexto->ac = registrosCpu.ac;
     contexto->rb = registrosCpu.rb;
     contexto->rl = registrosCpu.rl;
-    contexto->rx = registrosCpu.rx;
     contexto->sp = registrosCpu.sp;
     contexto->psw = registrosCpu.psw;
     
@@ -830,7 +833,8 @@ void restaurarContexto(ContextoCpu *contexto) {
     registrosCpu.ac = contexto->ac;
     registrosCpu.rb = contexto->rb;
     registrosCpu.rl = contexto->rl;
-    registrosCpu.rx = contexto->rx;
+    /* RX es la base fija de la pila y debe permanecer en TAMANO_MEMORIA-1 */
+    registrosCpu.rx = TAMANO_MEMORIA - 1;
     registrosCpu.sp = contexto->sp;
     registrosCpu.psw = contexto->psw;
     
@@ -840,6 +844,39 @@ void restaurarContexto(ContextoCpu *contexto) {
      *   *contexto = nuevo_proceso->pcb.contexto;
      */
 }
+
+/* ============================================================================
+ * Helpers para guardar/restaurar en pila (push/pop internos)
+ * ============================================================================ */
+
+// Empuja una Palabra en la pila. Retorna 1 ok, 0 si overflow.
+static int pushPalabra(Palabra p) {
+    registrosCpu.sp--;
+    if (registrosCpu.sp < registrosCpu.rb) {
+        registrosCpu.sp++; // revertir
+        return 0;
+    }
+    escribirMemoria(registrosCpu.sp, p);
+    return 1;
+}
+
+// Empuja un entero convirtiendolo en Palabra
+static int pushInt(int v) {
+    return pushPalabra(enteroAPalabra(v));
+}
+
+// Saca una Palabra de la pila (pop)
+static Palabra popPalabra() {
+    Palabra p = leerMemoria(registrosCpu.sp);
+    registrosCpu.sp++;
+    return p;
+}
+
+// Saca un entero de la pila
+static int popInt() {
+    return palabraAEntero(popPalabra());
+}
+
 
 /*
  * Maneja una interrupcion. Retorna 1 si es recuperable, 0 si es fatal.
@@ -851,99 +888,152 @@ int manejarInterrupcion(int codigoInterrupcion) {
     sprintf(buffer, "=== INTERRUPCION %d ===", codigoInterrupcion);
     imprimirLog(buffer);
     printf("[INTERRUPCION] Codigo: %d\n", codigoInterrupcion);
-    
-    // 1. Guardar contexto
-    guardarContexto(&contextoGuardado);
-    
-    // 2. Cambiar a modo kernel
-    registrosCpu.psw.modoOperacion = MODO_KERNEL;
-    
-    // 3. Deshabilitar interrupciones
-    registrosCpu.psw.habilitarInterrupciones = INT_DESHABILITADAS;
-    
-    // 4. Determinar si es recuperable y ejecutar manejador
+
+    // 1. Determinar si es recuperable (no modificar estado todavía)
     switch (codigoInterrupcion) {
         case INT_SYSCALL_INVALIDA:  // 0: Syscall invalida - FATAL
             imprimirLog("ERROR FATAL: Syscall invalida");
             esRecuperable = 0;
             break;
-            
+
         case INT_CODIGO_INVALIDO:  // 1: Codigo invalido - FATAL
             imprimirLog("ERROR FATAL: Codigo de interrupcion invalido");
             esRecuperable = 0;
             break;
-            
+
         case INT_SVC:  // 2: Llamada al sistema - RECUPERABLE
             imprimirLog("Manejando syscall...");
-            /*
-             * NOTA: Aqui iria el manejador de syscalls del kernel.
-             * El numero de syscall esta en AC, parametros en pila.
-             *   manejar_syscall(palabraAEntero(registrosCpu.ac));
-             */
             esRecuperable = 1;
             break;
-            
+
         case INT_TIMER:  // 3: Timer - RECUPERABLE
             imprimirLog("Interrupcion de reloj");
-            /*
-             * NOTA MULTIPROGRAMACION:
-             * Aqui el planificador decidiria si cambiar de proceso:
-             *   if (quantum_expirado()) {
-             *       guardar_pcb(proceso_actual);
-             *       proceso_actual = planificador_round_robin();
-             *       cargar_pcb(proceso_actual);
-             *   }
-             */
             esRecuperable = 1;
             break;
-            
+
         case INT_IO_DONE:  // 4: Fin de E/S - RECUPERABLE
             imprimirLog("Operacion de E/S completada");
-            /*
-             * NOTA: Aqui se notificaria al proceso que su E/S termino.
-             *   despertar_proceso_bloqueado(proceso_esperando_io);
-             */
             esRecuperable = 1;
             break;
-            
+
         case INT_INSTRUCCION_INVALIDA:  // 5: Instruccion invalida - FATAL
             imprimirLog("ERROR FATAL: Instruccion invalida o privilegiada");
             esRecuperable = 0;
             break;
-            
+
         case INT_DIRECCION_INVALIDA:  // 6: Direccionamiento invalido - FATAL
             imprimirLog("ERROR FATAL: Violacion de proteccion de memoria");
             esRecuperable = 0;
             break;
-            
+
         case INT_UNDERFLOW:  // 7: Underflow - FATAL
             imprimirLog("ERROR FATAL: Stack underflow");
             esRecuperable = 0;
             break;
-            
+
         case INT_OVERFLOW:  // 8: Overflow - FATAL
             imprimirLog("ERROR FATAL: Overflow aritmetico");
             esRecuperable = 0;
             break;
-            
+
         default:
             sprintf(buffer, "ERROR: Codigo de interrupcion desconocido: %d", codigoInterrupcion);
             imprimirLog(buffer);
             esRecuperable = 0;
     }
-    
-    // 5. Si es recuperable, restaurar contexto y volver a modo usuario
-    if (esRecuperable) {
-        restaurarContexto(&contextoGuardado);
-        registrosCpu.psw.modoOperacion = MODO_USUARIO;
-        registrosCpu.psw.habilitarInterrupciones = INT_HABILITADAS;
-        imprimirLog("Retornando de interrupcion");
-    } else {
+
+    // 2. Si es fatal, terminar programa
+    if (!esRecuperable) {
         imprimirLog("Interrupcion fatal - Terminando programa");
         cpuEjecutando = 0;
+        return 0;
     }
-    
-    return esRecuperable;
+
+    // 3. Es recuperable: intentar guardar todo el contexto en la pila
+    //    Orden de push (de primero a ultimo): AC, MAR, MDR,
+    //    IR.codigo, IR.direccionamiento, IR.valor,
+    //    RB, RL, RX,
+    //    PSW.codigoCondicion, PSW.modoOperacion, PSW.habilitarInterrupciones, PSW.pc
+
+    // Guardar AC, MAR, MDR
+    if (!pushPalabra(registrosCpu.ac)) {
+        imprimirLog("ERROR: Stack overflow al guardar contexto (AC)");
+        cpuEjecutando = 0;
+        return 0;
+    }
+    if (!pushPalabra(registrosCpu.mar)) {
+        imprimirLog("ERROR: Stack overflow al guardar contexto (MAR)");
+        cpuEjecutando = 0;
+        return 0;
+    }
+    if (!pushPalabra(registrosCpu.mdr)) {
+        imprimirLog("ERROR: Stack overflow al guardar contexto (MDR)");
+        cpuEjecutando = 0;
+        return 0;
+    }
+
+    // IR fields
+    if (!pushInt(registrosCpu.ir.codigoOperacion)) { imprimirLog("ERROR: Stack overflow (IR.cod)"); cpuEjecutando = 0; return 0; }
+    if (!pushInt(registrosCpu.ir.direccionamiento)) { imprimirLog("ERROR: Stack overflow (IR.dir)"); cpuEjecutando = 0; return 0; }
+    if (!pushInt(registrosCpu.ir.valor)) { imprimirLog("ERROR: Stack overflow (IR.val)"); cpuEjecutando = 0; return 0; }
+
+    // RB, RL, RX
+    if (!pushInt(registrosCpu.rb)) { imprimirLog("ERROR: Stack overflow (RB)"); cpuEjecutando = 0; return 0; }
+    if (!pushInt(registrosCpu.rl)) { imprimirLog("ERROR: Stack overflow (RL)"); cpuEjecutando = 0; return 0; }
+    /* RX es base fija de la pila y no se debe modificar/restaurar desde el contexto
+     * No empujamos RX en la pila para preservarlo como TAMANO_MEMORIA-1 */
+
+    // PSW fields
+    if (!pushInt(registrosCpu.psw.codigoCondicion)) { imprimirLog("ERROR: Stack overflow (PSW.CC)"); cpuEjecutando = 0; return 0; }
+    if (!pushInt(registrosCpu.psw.modoOperacion)) { imprimirLog("ERROR: Stack overflow (PSW.MODO)"); cpuEjecutando = 0; return 0; }
+    if (!pushInt(registrosCpu.psw.habilitarInterrupciones)) { imprimirLog("ERROR: Stack overflow (PSW.INT)"); cpuEjecutando = 0; return 0; }
+    if (!pushInt(registrosCpu.psw.pc)) { imprimirLog("ERROR: Stack overflow (PSW.PC)"); cpuEjecutando = 0; return 0; }
+
+    // 4. Cambiar a modo kernel y deshabilitar interrupciones mientras se maneja
+    registrosCpu.psw.modoOperacion = MODO_KERNEL;
+    registrosCpu.psw.habilitarInterrupciones = INT_DESHABILITADAS;
+
+    // 5. Ejecutar manejador (simplificado / placeholders)
+    switch (codigoInterrupcion) {
+        case INT_SVC:
+            // handler de syscall (placeholder)
+            break;
+        case INT_TIMER:
+            // handler de timer (placeholder)
+            break;
+        case INT_IO_DONE:
+            // handler E/S completada (placeholder)
+            break;
+        default:
+            // No hay accion adicional para los otros casos recuperables
+            break;
+    }
+
+    // 6. Restaurar contexto desde pila (orden inverso al push)
+    registrosCpu.psw.pc = popInt();
+    registrosCpu.psw.habilitarInterrupciones = popInt();
+    registrosCpu.psw.modoOperacion = popInt();
+    registrosCpu.psw.codigoCondicion = popInt();
+
+    /* RX no fue apilado: asegurar que permanezca en la base fija */
+    registrosCpu.rl = popInt();
+    registrosCpu.rb = popInt();
+    registrosCpu.rx = TAMANO_MEMORIA - 1;
+
+    registrosCpu.ir.valor = popInt();
+    registrosCpu.ir.direccionamiento = popInt();
+    registrosCpu.ir.codigoOperacion = popInt();
+
+    registrosCpu.mdr = popPalabra();
+    registrosCpu.mar = popPalabra();
+    registrosCpu.ac = popPalabra();
+
+    // 7. Devolver a modo usuario (PSW ya restaurado, pero asegurar bandera de interrupciones)
+    registrosCpu.psw.modoOperacion = MODO_USUARIO;
+    registrosCpu.psw.habilitarInterrupciones = INT_HABILITADAS;
+    imprimirLog("Retornando de interrupcion");
+
+    return 1;
 }
 
 /*

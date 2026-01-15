@@ -218,8 +218,7 @@ int cargarPrograma(const char *rutaArchivo) {
                i, direccionBase + i, buffer[i].signo, buffer[i].digitos);
     }
 
-    // No colocar centinela: RL apunta a la ultima instruccion del programa (inclusivo)
-    int direccionUltimaInstr = direccionBase + bufferLen - 1;
+    // Nota: El uso de centinela fue eliminado; no escribimos centinela.
 
     // Guardar informacion del programa
     strncpy(programaActual.nombre, nombrePrograma, MAX_NOMBRE_PROGRAMA - 1);
@@ -227,8 +226,8 @@ int cargarPrograma(const char *rutaArchivo) {
     programaActual.lineaInicio = lineaInicio;
     programaActual.numeroPalabras = bufferLen;
     programaActual.direccionBase = direccionBase;
-    // RL = direccion de la ultima instruccion (base + numeroPalabras - 1)
-    programaActual.direccionLimite = direccionUltimaInstr;
+    // RL = ultima direccion valida (base + numeroPalabras - 1)
+    programaActual.direccionLimite = direccionBase + bufferLen - 1;
 
     printf("[LOADER] ============================================\n");
     printf("[LOADER] Programa '%s' cargado exitosamente\n", programaActual.nombre);
@@ -238,7 +237,7 @@ int cargarPrograma(const char *rutaArchivo) {
     printf("[LOADER] PC inicial (logico): %d\n", lineaInicio);
     printf("[LOADER] ============================================\n");
 
-    // Actualizar siguiente direccion disponible (despues del programa)
+    // Actualizar siguiente direccion disponible (despues del programa cargado)
     siguienteDireccionDisponible = direccionBase + bufferLen;
 
     free(buffer);
@@ -253,15 +252,14 @@ int cargarPrograma(const char *rutaArchivo) {
 void prepararEjecucion() {
     // Establecer registros de proteccion
     registrosCpu.rb = programaActual.direccionBase;
-    registrosCpu.rl = programaActual.direccionLimite; // RL = direccion de la ultima instruccion (incluido)
+    registrosCpu.rl = programaActual.direccionLimite; // RL = ultima direccion valida
 
     // Establecer PC en la linea de inicio (direccion logica)
     registrosCpu.psw.pc = programaActual.lineaInicio;
 
-    // Establecer pila DESPUES del area de programa
-    // RX/SP apuntan a la primera direccion libre (RL + 1). La pila crecerá hacia abajo.
-    registrosCpu.rx = programaActual.direccionLimite + 1;
-    registrosCpu.sp = programaActual.direccionLimite + 1;
+    // Establecer pila en la cima de la memoria física (base fija)
+    registrosCpu.rx = TAMANO_MEMORIA - 1;
+    registrosCpu.sp = TAMANO_MEMORIA - 1;
 
     // Modo usuario con interrupciones habilitadas
     registrosCpu.psw.modoOperacion = MODO_USUARIO;
