@@ -62,6 +62,8 @@ int cargarPrograma(const char *rutaArchivo) {
     char linea[MAX_LINEA];
     int lineaInicio = -1;
     int numeroPalabrasHeader = -1;
+    int lineaInicio = -1;
+    int numeroPalabrasHeader = -1;
     char nombrePrograma[MAX_NOMBRE_PROGRAMA] = "";
     int instruccionesLeidas = 0;
     Palabra instruccion;
@@ -72,7 +74,14 @@ int cargarPrograma(const char *rutaArchivo) {
     int bufferCap = 0;
     int bufferLen = 0;
 
+
+    // Buffer temporal para validar antes de escribir a memoria
+    Palabra *buffer = NULL;
+    int bufferCap = 0;
+    int bufferLen = 0;
+
     printf("[LOADER] Intentando cargar: %s\n", rutaArchivo);
+
 
     // Abrir el archivo
     archivo = fopen(rutaArchivo, "r");
@@ -97,17 +106,26 @@ int cargarPrograma(const char *rutaArchivo) {
     }
 
     // Leer y validar el archivo (no escribir en memoria aún)
+
+    // Leer y validar el archivo (no escribir en memoria aún)
     while (fgets(linea, MAX_LINEA, archivo) != NULL) {
         // Eliminar salto de linea
         linea[strcspn(linea, "\n")] = '\0';
+
 
         // Ignorar lineas vacias y comentarios
         if (strlen(linea) == 0 || linea[0] == '/' || linea[0] == '#') {
             continue;
         }
 
+
         // Parsear _start
         if (strncmp(linea, "_start", 6) == 0) {
+            if (sscanf(linea, "_start %d", &lineaInicio) != 1) {
+                printf("[LOADER] ERROR: _start invalido\n");
+                fclose(archivo);
+                return 1;
+            }
             if (sscanf(linea, "_start %d", &lineaInicio) != 1) {
                 printf("[LOADER] ERROR: _start invalido\n");
                 fclose(archivo);
@@ -117,8 +135,15 @@ int cargarPrograma(const char *rutaArchivo) {
             continue;
         }
 
+
         // Parsear .NumeroPalabras
         if (strncmp(linea, ".NumeroPalabras", 15) == 0) {
+            if (sscanf(linea, ".NumeroPalabras %d", &numeroPalabrasHeader) != 1) {
+                printf("[LOADER] ERROR: .NumeroPalabras invalido\n");
+                fclose(archivo);
+                return 1;
+            }
+            printf("[LOADER] NumeroPalabras (encabezado) = %d\n", numeroPalabrasHeader);
             if (sscanf(linea, ".NumeroPalabras %d", &numeroPalabrasHeader) != 1) {
                 printf("[LOADER] ERROR: .NumeroPalabras invalido\n");
                 fclose(archivo);
@@ -128,8 +153,14 @@ int cargarPrograma(const char *rutaArchivo) {
             continue;
         }
 
+
         // Parsear .NombreProg
         if (strncmp(linea, ".NombreProg", 11) == 0) {
+            if (sscanf(linea, ".NombreProg %49s", nombrePrograma) != 1) {
+                printf("[LOADER] ERROR: .NombreProg invalido\n");
+                fclose(archivo);
+                return 1;
+            }
             if (sscanf(linea, ".NombreProg %49s", nombrePrograma) != 1) {
                 printf("[LOADER] ERROR: .NombreProg invalido\n");
                 fclose(archivo);
@@ -138,6 +169,8 @@ int cargarPrograma(const char *rutaArchivo) {
             printf("[LOADER] NombreProg = %s\n", nombrePrograma);
             continue;
         }
+
+        // Detectar fin del programa (una linea con solo '.')
 
         // Detectar fin del programa (una linea con solo '.')
         if (linea[0] == '.' && strlen(linea) == 1) {
@@ -189,11 +222,37 @@ int cargarPrograma(const char *rutaArchivo) {
         buffer[bufferLen++] = instruccion;
     }
 
+
     fclose(archivo);
+
 
     // Verificar que se leyeron instrucciones
     if (bufferLen == 0) {
+    if (bufferLen == 0) {
         printf("[LOADER] ERROR: No se encontraron instrucciones\n");
+        free(buffer);
+        return 1;
+    }
+
+    // Si el encabezado especifica NumeroPalabras, verificar que coincida
+    if (numeroPalabrasHeader != -1 && numeroPalabrasHeader != bufferLen) {
+        printf("[LOADER] ERROR: .NumeroPalabras (%d) no coincide con instrucciones leidas (%d)\n",
+               numeroPalabrasHeader, bufferLen);
+        free(buffer);
+        return 1;
+    }
+
+    // Validar _start
+    if (lineaInicio < 0 || lineaInicio >= bufferLen) {
+        printf("[LOADER] ERROR: _start invalido o fuera de rango\n");
+        free(buffer);
+        return 1;
+    }
+
+    // Verificar espacio en memoria antes de escribir
+    if (siguienteDireccionDisponible + bufferLen >= TAMANO_MEMORIA) {
+        printf("[LOADER] ERROR: Memoria insuficiente para cargar el programa\n");
+        free(buffer);
         free(buffer);
         return 1;
     }
@@ -231,8 +290,21 @@ int cargarPrograma(const char *rutaArchivo) {
 
     // Nota: El uso de centinela fue eliminado; no escribimos centinela.
 
+
+    // Escribir buffer a memoria (commit)
+    int i;
+    int direccionBase = siguienteDireccionDisponible;
+    for (i = 0; i < bufferLen; i++) {
+        escribirMemoria(direccionBase + i, buffer[i]);
+        printf("[LOADER] Instruccion %d cargada en direccion %d: %d%07d\n",
+               i, direccionBase + i, buffer[i].signo, buffer[i].digitos);
+    }
+
+    // Nota: El uso de centinela fue eliminado; no escribimos centinela.
+
     // Guardar informacion del programa
     strncpy(programaActual.nombre, nombrePrograma, MAX_NOMBRE_PROGRAMA - 1);
+    programaActual.nombre[MAX_NOMBRE_PROGRAMA - 1] = '\0';
     programaActual.nombre[MAX_NOMBRE_PROGRAMA - 1] = '\0';
     programaActual.lineaInicio = lineaInicio;
     programaActual.numeroPalabras = bufferLen;
@@ -240,7 +312,14 @@ int cargarPrograma(const char *rutaArchivo) {
     // RL = ultima direccion valida (base + numeroPalabras - 1)
     programaActual.direccionLimite = direccionBase + bufferLen - 1;
 
+    programaActual.numeroPalabras = bufferLen;
+    programaActual.direccionBase = direccionBase;
+    // RL = ultima direccion valida (base + numeroPalabras - 1)
+    programaActual.direccionLimite = direccionBase + bufferLen - 1;
+
     printf("[LOADER] ============================================\n");
+    printf("[LOADER] Programa '%s' cargado exitosamente\n", programaActual.nombre);
+    printf("[LOADER] Instrucciones: %d\n", bufferLen);
     printf("[LOADER] Programa '%s' cargado exitosamente\n", programaActual.nombre);
     printf("[LOADER] Instrucciones: %d\n", bufferLen);
     printf("[LOADER] RB (direccion base): %d\n", programaActual.direccionBase);
@@ -252,7 +331,13 @@ int cargarPrograma(const char *rutaArchivo) {
     siguienteDireccionDisponible = direccionBase + bufferLen;
 
     free(buffer);
+
+    // Actualizar siguiente direccion disponible (despues del programa cargado)
+    siguienteDireccionDisponible = direccionBase + bufferLen;
+
+    free(buffer);
     return 0;  // Exito
+} 
 } 
 
 /*
@@ -263,6 +348,8 @@ int cargarPrograma(const char *rutaArchivo) {
 void prepararEjecucion() {
     // Establecer registros de proteccion
     registrosCpu.rb = programaActual.direccionBase;
+    registrosCpu.rl = programaActual.direccionLimite; // RL = ultima direccion valida
+
     registrosCpu.rl = programaActual.direccionLimite; // RL = ultima direccion valida
 
     // Establecer PC en la linea de inicio (direccion logica)
@@ -283,15 +370,18 @@ void prepararEjecucion() {
     registrosCpu.psw.habilitarInterrupciones = INT_HABILITADAS;
     registrosCpu.psw.codigoCondicion = CC_CERO;
 
+
     // Limpiar acumulador
     registrosCpu.ac.signo = 0;
     registrosCpu.ac.digitos = 0;
+
 
     printf("[LOADER] CPU preparado para ejecucion:\n");
     printf("[LOADER]   RB=%d, RL=%d, PC=%d (logico)\n",
            registrosCpu.rb, registrosCpu.rl, registrosCpu.psw.pc);
     printf("[LOADER]   RX=%d, SP=%d\n",
            registrosCpu.rx, registrosCpu.sp);
+} 
 } 
 
 /*

@@ -35,7 +35,7 @@ int interrupcionPendiente = 0;
 int codigoInterrupcionPendiente = -1;
 
 // Contexto guardado para restaurar despues de interrupcion
-static ContextoCpu contextoGuardado;
+// Ya no usamos un contexto guardado global; las funciones usan el paso por referencia.
 
 /* ============================================================================
  * NOTA: La memoria se define en memoria.c y se accede via leerMemoria()
@@ -119,9 +119,12 @@ void imprimirEstadoCpu() {
  * Verifica si una instruccion es el centinela de fin de programa.
  */
 int esCentinela(Palabra instruccion) {
-    // El centinela es opcode 99 que no existe o valor 99999999
-    // Como hemos unificado a signo 0 y 8 digitos:
-    return (instruccion.digitos == VALOR_CENTINELA);
+    // El centinela puede representarse como el valor maximo 99999999
+    // o como un opcode 99 en la porcion de opcode. Comprobamos ambas.
+    if (instruccion.digitos == 99999999) return 1;
+    // Extraer posible opcode (si la instruccion tiene formato compacto)
+    if (instruccion.digitos / 1000000 == 99) return 1;
+    return 0;
 }
 
 /*
@@ -626,7 +629,13 @@ int faseExecute() {
             break;
             
         case OP_RETRN:  // 14: Retorno de subrutina (PRIVILEGIADA)
-            // Pop PC de la pila
+            // Pop PC de la pila (verificar underflow)
+            if (registrosCpu.sp >= registrosCpu.rx) {
+                imprimirLog("ERROR: Stack underflow al hacer RETRN");
+                interrupcionPendiente = 1;
+                codigoInterrupcionPendiente = INT_UNDERFLOW;
+                return 1;
+            }
             registrosCpu.psw.pc = palabraAEntero(leerMemoria(registrosCpu.sp));
             registrosCpu.sp++;
             break;
@@ -664,7 +673,17 @@ int faseExecute() {
             break;
             
         case OP_STRRB:  // 20: RB = AC
-            registrosCpu.rb = palabraAEntero(registrosCpu.ac);
+            {
+                int nuevoRB = palabraAEntero(registrosCpu.ac);
+                // RB debe estar dentro del espacio de usuario y menor que RL
+                if (nuevoRB < INICIO_MEMORIA_USUARIO || nuevoRB >= registrosCpu.rl) {
+                    imprimirLog("ERROR: Valor invalido para RB");
+                    interrupcionPendiente = 1;
+                    codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
+                    return 1;
+                }
+                registrosCpu.rb = nuevoRB;
+            }
             break;
             
         case OP_LOADRL:  // 21: AC = RL
@@ -672,7 +691,17 @@ int faseExecute() {
             break;
             
         case OP_STRRL:  // 22: RL = AC
-            registrosCpu.rl = palabraAEntero(registrosCpu.ac);
+            {
+                int nuevoRL = palabraAEntero(registrosCpu.ac);
+                // RL >= RB y dentro de memoria
+                if (nuevoRL < registrosCpu.rb || nuevoRL >= TAMANO_MEMORIA) {
+                    imprimirLog("ERROR: Valor invalido para RL");
+                    interrupcionPendiente = 1;
+                    codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
+                    return 1;
+                }
+                registrosCpu.rl = nuevoRL;
+            }
             break;
             
         case OP_LOADSP:  // 23: AC = SP
@@ -680,7 +709,17 @@ int faseExecute() {
             break;
             
         case OP_STRSP:  // 24: SP = AC
-            registrosCpu.sp = palabraAEntero(registrosCpu.ac);
+            {
+                int nuevoSP = palabraAEntero(registrosCpu.ac);
+                // SP debe estar entre RB y RX (inclusive RX es base de pila)
+                if (nuevoSP < registrosCpu.rb || nuevoSP > registrosCpu.rx) {
+                    imprimirLog("ERROR: Valor invalido para SP");
+                    interrupcionPendiente = 1;
+                    codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
+                    return 1;
+                }
+                registrosCpu.sp = nuevoSP;
+            }
             break;
             
         /* ===== GRUPO 7: PILA ===== */
@@ -696,7 +735,8 @@ int faseExecute() {
             break;
             
         case OP_POP:  // 26: Pop de pila a AC
-            if (registrosCpu.sp > registrosCpu.rx) {
+            // Underflow: SP == RX => pila vacia
+            if (registrosCpu.sp >= registrosCpu.rx) {
                 imprimirLog("ERROR: Stack underflow");
                 interrupcionPendiente = 1;
                 codigoInterrupcionPendiente = INT_UNDERFLOW;
@@ -704,7 +744,7 @@ int faseExecute() {
             }
             registrosCpu.ac = leerMemoria(registrosCpu.sp);
             registrosCpu.sp++;
-            break;
+            break; 
             
         /* ===== GRUPO 8: SALTO INCONDICIONAL ===== */
         case OP_J:  // 27: PC = direccion (salto incondicional)
@@ -777,7 +817,6 @@ void guardarContexto(ContextoCpu *contexto) {
     contexto->ac = registrosCpu.ac;
     contexto->rb = registrosCpu.rb;
     contexto->rl = registrosCpu.rl;
-    contexto->rx = registrosCpu.rx;
     contexto->sp = registrosCpu.sp;
     contexto->psw = registrosCpu.psw;
     
@@ -878,38 +917,47 @@ int manejarInterrupcion(int codigoInterrupcion) {
             imprimirLog("ERROR FATAL: Syscall invalida");
             break;
 
+
         case INT_CODIGO_INVALIDO:  // 1: Codigo invalido - FATAL
             imprimirLog("ERROR FATAL: Codigo de interrupcion invalido");
             break;
+
 
         case INT_SVC:  // 2: Llamada al sistema - RECUPERABLE
             imprimirLog("Manejando syscall...");
             /* Aqui iria el manejador de syscalls del kernel. */
             break;
 
+
         case INT_TIMER:  // 3: Timer - RECUPERABLE
             imprimirLog("Interrupcion de reloj");
             break;
+
 
         case INT_IO_DONE:  // 4: Fin de E/S - RECUPERABLE
             imprimirLog("Operacion de E/S completada");
             break;
 
+
         case INT_INSTRUCCION_INVALIDA:  // 5: Instruccion invalida - FATAL
             imprimirLog("ERROR FATAL: Instruccion invalida o privilegiada");
             break;
+
 
         case INT_DIRECCION_INVALIDA:  // 6: Direccionamiento invalido - FATAL
             imprimirLog("ERROR FATAL: Violacion de proteccion de memoria");
             break;
 
+
         case INT_UNDERFLOW:  // 7: Underflow - FATAL
             imprimirLog("ERROR FATAL: Stack underflow");
             break;
 
+
         case INT_OVERFLOW:  // 8: Overflow - FATAL
             imprimirLog("ERROR FATAL: Overflow aritmetico");
             break;
+
 
         default:
             sprintf(buffer, "ERROR: Codigo de interrupcion desconocido: %d", codigoInterrupcion);

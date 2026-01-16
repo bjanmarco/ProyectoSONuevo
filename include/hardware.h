@@ -244,11 +244,8 @@ extern DiscoDuro discoDuro;
 // Controlador DMA
 extern ControladorDma dma;
 
-// Valor centinela para marcar fin del programa
-// Usamos opcode 99 que no existe en el set de instrucciones
-#define CENTINELA_SIGNO         0
-#define CENTINELA_DIGITOS       99999999
-#define VALOR_CENTINELA         99999999
+// Fin de programa: controlado por los registros RB/RL (RL inclusivo).
+// Los defines y el uso de centinela fueron eliminados; el loader ya no escribe centinelas.
 
 // Bandera para saber si la CPU sigue ejecutando
 extern int cpuEjecutando;
