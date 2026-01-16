@@ -1,5 +1,0 @@
-_start 0
-.NumeroPalabras 2
-.NombreProg INV
-04000050
-05000000

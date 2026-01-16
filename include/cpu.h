@@ -47,9 +47,14 @@ int faseExecute();
 
 /* Funciones de manejo de interrupciones */
 int manejarInterrupcion(int codigoInterrupcion);
-void guardarContexto(ContextoCpu *contexto);
-void restaurarContexto(ContextoCpu *contexto);
+void guardarContexto();
+void restaurarContexto();
 int verificarInterrupcionesPendientes();
+
+/* Funciones auxiliares para PSW */
+Palabra codificarPsw();
+void decodificarPsw(Palabra pswPalabra);
+
 
 /* Funciones auxiliares */
 int traducirDireccion(int direccionLogica);

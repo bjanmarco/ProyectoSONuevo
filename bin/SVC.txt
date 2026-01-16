@@ -1,5 +1,0 @@
-_start 0
-.NumeroPalabras 2
-.NombreProg SVC
-13000000
-05000000

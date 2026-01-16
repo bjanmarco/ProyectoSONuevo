@@ -154,14 +154,10 @@ int cargarPrograma(const char *rutaArchivo) {
             return 1;
         }
 
-        // Convertir a Palabra (signo-magnitud)
-        if (valorInstruccion >= 10000000L) {
-            instruccion.signo = (int)(valorInstruccion / 10000000L);
-            instruccion.digitos = (int)(valorInstruccion % 10000000L);
-        } else {
-            instruccion.signo = 0;
-            instruccion.digitos = (int)valorInstruccion;
-        }
+        // CORRECCION: Las instrucciones siempre son positivas en este formato de texto
+        // y ocupan 8 digitos. El primer digito es parte del opcode, NO signo.
+        instruccion.signo = 0;
+        instruccion.digitos = (int)valorInstruccion;
 
         // Agregar al buffer dinamico
         if (bufferLen >= bufferCap) {
@@ -195,9 +191,9 @@ int cargarPrograma(const char *rutaArchivo) {
         return 1;
     }
 
-    // Validar _start
-    if (lineaInicio < 0 || lineaInicio >= bufferLen) {
-        printf("[LOADER] ERROR: _start invalido o fuera de rango\n");
+    // Validar _start (el usuario lo ingresa en base 1, asi que valida de 1 a bufferLen)
+    if (lineaInicio < 1 || lineaInicio > bufferLen) {
+        printf("[LOADER] ERROR: _start invalido o fuera de rango (debe ser 1..%d)\n", bufferLen);
         free(buffer);
         return 1;
     }
@@ -224,7 +220,8 @@ int cargarPrograma(const char *rutaArchivo) {
     // Guardar informacion del programa
     strncpy(programaActual.nombre, nombrePrograma, MAX_NOMBRE_PROGRAMA - 1);
     programaActual.nombre[MAX_NOMBRE_PROGRAMA - 1] = '\0';
-    programaActual.lineaInicio = lineaInicio;
+    // Convertir lineaInicio (base 1) a base 0 para el PC
+    programaActual.lineaInicio = lineaInicio - 1;
     programaActual.numeroPalabras = bufferLen;
     programaActual.direccionBase = direccionBase;
     // RL = direccion de la ultima instruccion (base + numeroPalabras - 1)
@@ -235,7 +232,7 @@ int cargarPrograma(const char *rutaArchivo) {
     printf("[LOADER] Instrucciones: %d\n", bufferLen);
     printf("[LOADER] RB (direccion base): %d\n", programaActual.direccionBase);
     printf("[LOADER] RL (direccion limite): %d\n", programaActual.direccionLimite);
-    printf("[LOADER] PC inicial (logico): %d\n", lineaInicio);
+    printf("[LOADER] PC inicial (logico): %d\n", programaActual.lineaInicio);
     printf("[LOADER] ============================================\n");
 
     // Actualizar siguiente direccion disponible (despues del programa)
@@ -256,12 +253,14 @@ void prepararEjecucion() {
     registrosCpu.rl = programaActual.direccionLimite; // RL = direccion de la ultima instruccion (incluido)
 
     // Establecer PC en la linea de inicio (direccion logica)
+    // Establecer PC en la linea de inicio (direccion logica)
+    // Ya se convirtio a base 0 en cargarPrograma
     registrosCpu.psw.pc = programaActual.lineaInicio;
 
-    // Establecer pila DESPUES del area de programa
-    // RX/SP apuntan a la primera direccion libre (RL + 1). La pila crecerá hacia abajo.
-    registrosCpu.rx = programaActual.direccionLimite + 1;
-    registrosCpu.sp = programaActual.direccionLimite + 1;
+    // Establecer pila al FINAL de la memoria
+    // La pila crece hacia abajo (SP--), por lo que iniciamos en la ultima posicion
+    registrosCpu.rx = TAMANO_MEMORIA - 1;
+    registrosCpu.sp = TAMANO_MEMORIA - 1;
 
     // Modo usuario con interrupciones habilitadas
     registrosCpu.psw.modoOperacion = MODO_USUARIO;

@@ -22,20 +22,22 @@
 // Bandera que indica si el CPU esta ejecutando
 int cpuEjecutando = 0;
 
+// Variables para deteccion de bucles infinitos (JMP .)
+static int lastPC = -1;
+static int repetitionCount = 0;
+
 // Contador de ciclos para interrupciones de reloj
 int contadorCiclos = 0;
 
 // Intervalo para generar interrupcion de reloj (0 = deshabilitado)
 int intervaloReloj = 0;
 
+
 // Bandera de interrupcion pendiente
 int interrupcionPendiente = 0;
 
 // Codigo de la interrupcion pendiente
 int codigoInterrupcionPendiente = -1;
-
-// Contexto guardado para restaurar despues de interrupcion
-static ContextoCpu contextoGuardado;
 
 /* ============================================================================
  * NOTA: La memoria se define en memoria.c y se accede via leerMemoria()
@@ -206,6 +208,36 @@ void actualizarCodigoCondicion(int resultado) {
 }
 
 /*
+ * Codifica el PSW en una Palabra para poder apilarlo en memoria.
+ * Formato: [Signo=0][CC(1d)][Modo(1d)][Int(1d)][PC(5d)]
+ * Ejemplo: Si CC=1, Modo=1, Int=0, PC=305 -> 11000305
+ */
+Palabra codificarPsw() {
+    int valor = registrosCpu.psw.codigoCondicion * 10000000 +
+                registrosCpu.psw.modoOperacion * 1000000 +
+                registrosCpu.psw.habilitarInterrupciones * 100000 +
+                registrosCpu.psw.pc;
+    return enteroAPalabra(valor);
+}
+
+/*
+ * Decodifica una Palabra desde la pila y restaura el PSW.
+ * Extrae: CC, Modo, habilitacion de interrupciones, y PC.
+ */
+void decodificarPsw(Palabra pswPalabra) {
+    int valor = palabraAEntero(pswPalabra);
+    // Asegurar que el valor sea positivo
+    if (valor < 0) {
+        valor = -valor;
+    }
+    // Extraer campos (8 digitos: CCMIPPPP)
+    registrosCpu.psw.pc = valor % 100000;  // Ultimos 5 digitos
+    registrosCpu.psw.habilitarInterrupciones = (valor / 100000) % 10;  // 6to digito
+    registrosCpu.psw.modoOperacion = (valor / 1000000) % 10;  // 7mo digito
+    registrosCpu.psw.codigoCondicion = (valor / 10000000) % 10;  // 8vo digito
+}
+
+/*
  * Obtiene el operando segun el modo de direccionamiento.
  */
 Palabra obtenerOperando(int modo, int valor) {
@@ -296,6 +328,10 @@ void inicializarCpu() {
     codigoInterrupcionPendiente = -1;
     cpuEjecutando = 0;
     
+    // Reiniciar deteccion de bucles
+    lastPC = -1;
+    repetitionCount = 0;
+    
     imprimirLog("CPU inicializado correctamente");
 }
 
@@ -341,16 +377,6 @@ void ejecutarCpu() {
             manejarInterrupcion(INT_IO_DONE);
         }
         
-        /*
-         * NOTA MULTIPROGRAMACION:
-         * Aqui es donde el planificador verificaria si hay que hacer
-         * un cambio de contexto. Se llamaria a:
-         *   if (planificador_debe_cambiar()) {
-         *       guardar_pcb(proceso_actual);
-         *       proceso_actual = planificador_siguiente();
-         *       cargar_pcb(proceso_actual);
-         *   }
-         */
     }
     
     // Mostrar estado final
@@ -368,6 +394,20 @@ void ejecutarCpu() {
  */
 int cicloCpu() {
     char buffer[100];
+    
+    // Deteccion de bucle infinito (PC estatico)
+    // Si el PC no cambia durante 5 ciclos, asumimos deadlock o JMP .
+    if (registrosCpu.psw.pc == lastPC) {
+        repetitionCount++;
+        if (repetitionCount >= 5) {
+            imprimirLog("ALERTA: Posible bucle infinito detectado (PC estatico). Deteniendo ejecucion.");
+            cpuEjecutando = 0;
+            return 0;
+        }
+    } else {
+        lastPC = registrosCpu.psw.pc;
+        repetitionCount = 0;
+    }
     
     // Antes de FETCH: verificar fin por RL inclusivo o PC fuera de RB
     int direccionFisicaPC = traducirDireccion(registrosCpu.psw.pc);
@@ -806,38 +846,151 @@ int faseExecute() {
  * ============================================================================ */
 
 /*
- * Guarda el contexto actual del CPU.
+ * Guarda el contexto actual del CPU en la pila.
+ * Apila los siguientes registros en orden (6 palabras totales):
+ *   1. AC (Acumulador)
+ *   2. RB (Registro Base)
+ *   3. RL (Registro Limite)
+ *   4. RX (Registro base de pila)
+ *   5. SP (Puntero de pila ORIGINAL, antes de modificarlo)
+ *   6. PSW (Codificado como Palabra: CC, Modo, Int, PC)
+ * 
+ * IMPORTANTE: Verifica overflow de pila del SO antes de cada push.
+ * Si ocurre overflow, el sistema se detiene con error fatal.
  */
-void guardarContexto(ContextoCpu *contexto) {
-    contexto->ac = registrosCpu.ac;
-    contexto->rb = registrosCpu.rb;
-    contexto->rl = registrosCpu.rl;
-    contexto->rx = registrosCpu.rx;
-    contexto->sp = registrosCpu.sp;
-    contexto->psw = registrosCpu.psw;
+void guardarContexto() {
+    int spOriginal = registrosCpu.sp;  // Guardar SP antes de modificarlo
+    char buffer[100];
+    
+    imprimirLog("Guardando contexto en la pila...");
+    
+    // Verificar que hay espacio para 6 palabras en la pila del SO
+    // En modo kernel, podemos acceder a toda la memoria, pero debemos verificar
+    // que no sobrepasemos el inicio de la memoria (direccion 0)
+    if (registrosCpu.sp - 6 < 0) {
+        printf("ERROR FATAL: Overflow de pila del SO al guardar contexto\n");
+        printf("SP actual: %d, se necesitan 6 palabras\n", registrosCpu.sp);
+        imprimirLog("ERROR FATAL: Overflow de pila del SO - No hay espacio para contexto");
+        cpuEjecutando = 0;
+        return;
+    }
+    
+    // 1. Apilar AC
+    registrosCpu.sp--;
+    escribirMemoria(registrosCpu.sp, registrosCpu.ac);
+    sprintf(buffer, "  [SP=%d] AC apilado", registrosCpu.sp);
+    imprimirLog(buffer);
+    
+    // 2. Apilar RB
+    registrosCpu.sp--;
+    escribirMemoria(registrosCpu.sp, enteroAPalabra(registrosCpu.rb));
+    sprintf(buffer, "  [SP=%d] RB apilado", registrosCpu.sp);
+    imprimirLog(buffer);
+    
+    // 3. Apilar RL
+    registrosCpu.sp--;
+    escribirMemoria(registrosCpu.sp, enteroAPalabra(registrosCpu.rl));
+    sprintf(buffer, "  [SP=%d] RL apilado", registrosCpu.sp);
+    imprimirLog(buffer);
+    
+    // 4. Apilar RX
+    registrosCpu.sp--;
+    escribirMemoria(registrosCpu.sp, enteroAPalabra(registrosCpu.rx));
+    sprintf(buffer, "  [SP=%d] RX apilado", registrosCpu.sp);
+    imprimirLog(buffer);
+    
+    // 5. Apilar SP ORIGINAL (antes de empezar a guardar)
+    registrosCpu.sp--;
+    escribirMemoria(registrosCpu.sp, enteroAPalabra(spOriginal));
+    sprintf(buffer, "  [SP=%d] SP original (%d) apilado", registrosCpu.sp, spOriginal);
+    imprimirLog(buffer);
+    
+    // 6. Apilar PSW (codificado)
+    registrosCpu.sp--;
+    escribirMemoria(registrosCpu.sp, codificarPsw());
+    sprintf(buffer, "  [SP=%d] PSW apilado", registrosCpu.sp);
+    imprimirLog(buffer);
+    
+    sprintf(buffer, "Contexto guardado exitosamente. SP: %d -> %d (6 palabras)", 
+            spOriginal, registrosCpu.sp);
+    imprimirLog(buffer);
     
     /*
      * NOTA MULTIPROGRAMACION:
-     * Aqui se guardaria el contexto en el PCB del proceso actual:
-     *   proceso_actual->pcb.contexto = *contexto;
+     * En un sistema con multiples procesos, aqui se guardaria el SP final
+     * en el PCB del proceso actual para poder restaurarlo despues:
+     *   proceso_actual->pcb.sp = registrosCpu.sp;
      */
 }
 
 /*
- * Restaura el contexto del CPU.
+ * Restaura el contexto del CPU desde la pila.
+ * Desapila los registros en orden inverso (LIFO) al guardado:
+ *   6. PSW (decodificado desde Palabra)
+ *   5. SP original
+ *   4. RX
+ *   3. RL
+ *   2. RB
+ *   1. AC
+ * 
+ * IMPORTANTE: El SP se restaura al FINAL, despues de desapilar todos
+ * los registros, para que apunte donde estaba antes de la interrupcion.
  */
-void restaurarContexto(ContextoCpu *contexto) {
-    registrosCpu.ac = contexto->ac;
-    registrosCpu.rb = contexto->rb;
-    registrosCpu.rl = contexto->rl;
-    registrosCpu.rx = contexto->rx;
-    registrosCpu.sp = contexto->sp;
-    registrosCpu.psw = contexto->psw;
+void restaurarContexto() {
+    char buffer[100];
+    
+    imprimirLog("Restaurando contexto desde la pila...");
+    
+    // Desapilar en orden inverso (LIFO)
+    
+    // 6. Desapilar PSW (decodificar)
+    Palabra pswPalabra = leerMemoria(registrosCpu.sp);
+    registrosCpu.sp++;
+    decodificarPsw(pswPalabra);
+    sprintf(buffer, "  PSW restaurado desde SP=%d", registrosCpu.sp - 1);
+    imprimirLog(buffer);
+    
+    // 5. Desapilar SP original (guardarlo temporalmente)
+    int spOriginal = palabraAEntero(leerMemoria(registrosCpu.sp));
+    registrosCpu.sp++;
+    sprintf(buffer, "  SP original (%d) leido desde SP=%d", spOriginal, registrosCpu.sp - 1);
+    imprimirLog(buffer);
+    
+    // 4. Desapilar RX
+    registrosCpu.rx = palabraAEntero(leerMemoria(registrosCpu.sp));
+    registrosCpu.sp++;
+    sprintf(buffer, "  RX restaurado desde SP=%d", registrosCpu.sp - 1);
+    imprimirLog(buffer);
+    
+    // 3. Desapilar RL
+    registrosCpu.rl = palabraAEntero(leerMemoria(registrosCpu.sp));
+    registrosCpu.sp++;
+    sprintf(buffer, "  RL restaurado desde SP=%d", registrosCpu.sp - 1);
+    imprimirLog(buffer);
+    
+    // 2. Desapilar RB
+    registrosCpu.rb = palabraAEntero(leerMemoria(registrosCpu.sp));
+    registrosCpu.sp++;
+    sprintf(buffer, "  RB restaurado desde SP=%d", registrosCpu.sp - 1);
+    imprimirLog(buffer);
+    
+    // 1. Desapilar AC
+    registrosCpu.ac = leerMemoria(registrosCpu.sp);
+    registrosCpu.sp++;
+    sprintf(buffer, "  AC restaurado desde SP=%d", registrosCpu.sp - 1);
+    imprimirLog(buffer);
+    
+    // FINAL: Restaurar SP al valor original (antes del guardado de contexto)
+    // Esto deshace todas las operaciones de push que hicimos
+    registrosCpu.sp = spOriginal;
+    sprintf(buffer, "Contexto restaurado exitosamente. SP restaurado a: %d", spOriginal);
+    imprimirLog(buffer);
     
     /*
      * NOTA MULTIPROGRAMACION:
-     * Aqui se cargaria el contexto desde el PCB del nuevo proceso:
-     *   *contexto = nuevo_proceso->pcb.contexto;
+     * En un sistema con multiples procesos, aqui se cargaria el SP
+     * desde el PCB del nuevo proceso antes de empezar a desapilar:
+     *   registrosCpu.sp = nuevo_proceso->pcb.sp;
      */
 }
 
@@ -853,7 +1006,8 @@ int manejarInterrupcion(int codigoInterrupcion) {
     printf("[INTERRUPCION] Codigo: %d\n", codigoInterrupcion);
     
     // 1. Guardar contexto
-    guardarContexto(&contextoGuardado);
+    guardarContexto();
+
     
     // 2. Cambiar a modo kernel
     registrosCpu.psw.modoOperacion = MODO_KERNEL;
@@ -934,15 +1088,15 @@ int manejarInterrupcion(int codigoInterrupcion) {
     
     // 5. Si es recuperable, restaurar contexto y volver a modo usuario
     if (esRecuperable) {
-        restaurarContexto(&contextoGuardado);
-        registrosCpu.psw.modoOperacion = MODO_USUARIO;
-        registrosCpu.psw.habilitarInterrupciones = INT_HABILITADAS;
+        restaurarContexto();
         imprimirLog("Retornando de interrupcion");
     } else {
         imprimirLog("Interrupcion fatal - Terminando programa");
         cpuEjecutando = 0;
     }
     
+    registrosCpu.psw.modoOperacion = MODO_USUARIO;
+    registrosCpu.psw.habilitarInterrupciones = INT_HABILITADAS;
     return esRecuperable;
 }
 
