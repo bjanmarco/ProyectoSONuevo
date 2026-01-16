@@ -1,0 +1,3 @@
+cargar bin/sample_run.prog
+run
+exit
