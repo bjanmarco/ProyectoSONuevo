@@ -1,57 +1,24 @@
 ================================================================================
  MAQUINA VIRTUAL - LOG DE SISTEMA
- Iniciado: 00:05:29
+ Iniciado: 21:32:00
  Archivo: maquina_virtual.log
 ================================================================================
 
-[00:05:29][SIS] Maquina virtual iniciada
-[00:05:29][SIS] Memoria inicializada
-[00:05:29][SIS] Disco inicializado
-[00:05:29][SIS] DMA inicializado
-[00:05:29][SIS] Loader inicializado
-[00:05:29][SIS] CPU inicializado
-[00:06:03][SIS] Comando recibido: cargar programas/aritmetica.prog
-[00:06:03][LOADER] Iniciando carga de: programas/aritmetica.prog
-[00:06:03][LOADER] Programa cargado exitosamente
-[00:06:03][SIS] Comando recibido: run
-[00:06:03][SIS] Iniciando ejecucion en modo NORMAL
-[00:06:03][CPU] Iniciando ejecucion en modo normal
-[00:06:03][CPU] Ejecucion normal finalizada
-[00:06:03][SIS] Ejecucion finalizada
-[00:06:03][SIS] Comando recibido: registros
-[00:06:03][SIS] Comando recibido: cargar programas/interrupciones.prog
-[00:06:03][LOADER] Iniciando carga de: programas/interrupciones.prog
-[00:06:03][LOADER] Programa cargado exitosamente
-[00:06:03][SIS] Comando recibido: run
-[00:06:03][SIS] Iniciando ejecucion en modo NORMAL
-[00:06:03][CPU] Iniciando ejecucion en modo normal
-[00:06:03][CPU] Ejecucion normal finalizada
-[00:06:03][SIS] Ejecucion finalizada
-[00:06:03][SIS] Comando recibido: registros
-[00:06:03][SIS] Comando recibido: cargar programas/estres.prog
-[00:06:03][LOADER] Iniciando carga de: programas/estres.prog
-[00:06:03][LOADER] Programa cargado exitosamente
-[00:06:03][SIS] Comando recibido: run
-[00:06:03][SIS] Iniciando ejecucion en modo NORMAL
-[00:06:03][CPU] Iniciando ejecucion en modo normal
-[00:06:03][CPU] Ejecucion normal finalizada
-[00:06:03][SIS] Ejecucion finalizada
-[00:06:03][SIS] Comando recibido: registros
-[00:06:03][SIS] Comando recibido: cargar programas/aritmetica.prog
-[00:06:03][LOADER] Iniciando carga de: programas/aritmetica.prog
-[00:06:03][LOADER] Programa cargado exitosamente
-[00:06:03][SIS] Comando recibido: run
-[00:06:03][SIS] Iniciando ejecucion en modo NORMAL
-[00:06:03][CPU] Iniciando ejecucion en modo normal
-[00:06:03][CPU] Ejecucion normal finalizada
-[00:06:03][SIS] Ejecucion finalizada
-[00:06:03][SIS] Comando recibido: registros
-[00:06:03][SIS] Comando recibido: salir
-[00:06:03][SIS] Usuario solicito salir
-[00:06:03][SIS] Finalizando maquina virtual
+[21:32:00][SIS] Maquina virtual iniciada
+[21:32:00][SIS] Memoria inicializada
+[21:32:00][SIS] Disco inicializado
+[21:32:00][SIS] DMA inicializado
+[21:32:00][SIS] Loader inicializado
+[21:32:00][SIS] CPU inicializado
+[21:32:00][SIS] Comando recibido: cargar bin/ejemplo1.prog
+[21:32:00][LOADER] Iniciando carga de: bin/ejemplo1.prog
+[21:32:00][LOADER] ERROR al cargar programa
+[21:32:00][SIS] Comando recibido: salir
+[21:32:00][SIS] Usuario solicito salir
+[21:32:00][SIS] Finalizando maquina virtual
 
 ================================================================================
  FIN DEL LOG
- Finalizado: 00:06:03
- Total lineas: 45
+ Finalizado: 21:32:00
+ Total lineas: 12
 ================================================================================

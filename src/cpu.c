@@ -281,10 +281,10 @@ void inicializarCpu() {
     // NOTA: Estos se establecen cuando se carga un programa
     registrosCpu.rb = INICIO_MEMORIA_USUARIO;  // 300
     registrosCpu.rl = TAMANO_MEMORIA - 1;      // 1999
-    
-    // Inicializar pila al final de la memoria
-    registrosCpu.rx = TAMANO_MEMORIA - 1;  // Base de pila
-    registrosCpu.sp = TAMANO_MEMORIA - 1;  // Tope de pila
+
+    // Inicializar pila: fijar base en 1999
+    registrosCpu.rx = 1999;  // Base de pila (fija)
+    registrosCpu.sp = 1999;  // Tope de pila (variable)
     
     // Inicializar PSW
     registrosCpu.psw.codigoCondicion = CC_CERO;
@@ -539,7 +539,9 @@ int faseExecute() {
             break;
             
         case OP_STRRX:  // 07: RX = AC
-            registrosCpu.rx = palabraAEntero(registrosCpu.ac);
+            /* RX es la base fija de la pila y no puede modificarse dinámicamente.
+             * Ignoramos intentos de escribir en RX y mostramos un log. */
+            imprimirLog("AVISO: Intento de modificar RX ignorado (base fija 1999)");
             break;
             
         /* ===== GRUPO 4: COMPARACION Y SALTOS ===== */
@@ -793,7 +795,8 @@ void restaurarContexto(ContextoCpu *contexto) {
     registrosCpu.ac = contexto->ac;
     registrosCpu.rb = contexto->rb;
     registrosCpu.rl = contexto->rl;
-    registrosCpu.rx = contexto->rx;
+    /* RX debe permanecer siempre en 1999 (base fija de la pila). */
+    registrosCpu.rx = 1999;
     registrosCpu.sp = contexto->sp;
     registrosCpu.psw = contexto->psw;
     
@@ -805,108 +808,152 @@ void restaurarContexto(ContextoCpu *contexto) {
 }
 
 /*
+ * Helper: Apila una Palabra en la pila (retorna 1 si OK, 0 si overflow)
+ */
+static int pushPalabra(Palabra p) {
+    registrosCpu.sp--;
+    if (registrosCpu.sp < registrosCpu.rb) {
+        imprimirLog("ERROR: Stack overflow al salvar contexto en pila");
+        registrosCpu.sp++; // deshacer
+        return 0;
+    }
+    escribirMemoria(registrosCpu.sp, p);
+    return 1;
+}
+
+/*
+ * Helper: Desapila una Palabra de la pila (retorna 1 si OK, 0 si underflow)
+ */
+static int popPalabra(Palabra *out) {
+    if (registrosCpu.sp > registrosCpu.rx) {
+        imprimirLog("ERROR: Stack underflow al restaurar contexto desde pila");
+        return 0;
+    }
+    *out = leerMemoria(registrosCpu.sp);
+    registrosCpu.sp++;
+    return 1;
+}
+
+/*
  * Maneja una interrupcion. Retorna 1 si es recuperable, 0 si es fatal.
  */
 int manejarInterrupcion(int codigoInterrupcion) {
     char buffer[100];
     int esRecuperable = 0;
-    
+    Palabra tmp;
+
     sprintf(buffer, "=== INTERRUPCION %d ===", codigoInterrupcion);
     imprimirLog(buffer);
     printf("[INTERRUPCION] Codigo: %d\n", codigoInterrupcion);
-    
-    // 1. Guardar contexto
-    guardarContexto(&contextoGuardado);
-    
-    // 2. Cambiar a modo kernel
+
+    /* Cambiar a modo kernel y deshabilitar interrupciones */
     registrosCpu.psw.modoOperacion = MODO_KERNEL;
-    
-    // 3. Deshabilitar interrupciones
     registrosCpu.psw.habilitarInterrupciones = INT_DESHABILITADAS;
-    
-    // 4. Determinar si es recuperable y ejecutar manejador
+
+    /* Determinar si es recuperable (solo SVC, TIMER y IO_DONE son recuperables) */
+    if (codigoInterrupcion == INT_SVC || codigoInterrupcion == INT_TIMER || codigoInterrupcion == INT_IO_DONE) {
+        esRecuperable = 1;
+    } else {
+        esRecuperable = 0;
+    }
+
+    /* Si es recuperable, salvar TODOS los registros en la pila (orden definido)
+     * El formato: AC, RB, RL, RX, SP, PSW.pc, PSW.codigoCondicion, PSW.modoOperacion, PSW.habilitarInterrupciones
+     */
+    if (esRecuperable) {
+        if (!pushPalabra(registrosCpu.ac)) { cpuEjecutando = 0; return 0; }
+        if (!pushPalabra(enteroAPalabra(registrosCpu.rb))) { cpuEjecutando = 0; return 0; }
+        if (!pushPalabra(enteroAPalabra(registrosCpu.rl))) { cpuEjecutando = 0; return 0; }
+        if (!pushPalabra(enteroAPalabra(registrosCpu.rx))) { cpuEjecutando = 0; return 0; }
+        if (!pushPalabra(enteroAPalabra(registrosCpu.sp))) { cpuEjecutando = 0; return 0; }
+        if (!pushPalabra(enteroAPalabra(registrosCpu.psw.pc))) { cpuEjecutando = 0; return 0; }
+        if (!pushPalabra(enteroAPalabra(registrosCpu.psw.codigoCondicion))) { cpuEjecutando = 0; return 0; }
+        if (!pushPalabra(enteroAPalabra(registrosCpu.psw.modoOperacion))) { cpuEjecutando = 0; return 0; }
+        if (!pushPalabra(enteroAPalabra(registrosCpu.psw.habilitarInterrupciones))) { cpuEjecutando = 0; return 0; }
+    }
+
+    /* Ejecutar el manejador (logs / acciones) */
     switch (codigoInterrupcion) {
         case INT_SYSCALL_INVALIDA:  // 0: Syscall invalida - FATAL
             imprimirLog("ERROR FATAL: Syscall invalida");
-            esRecuperable = 0;
             break;
-            
+
         case INT_CODIGO_INVALIDO:  // 1: Codigo invalido - FATAL
             imprimirLog("ERROR FATAL: Codigo de interrupcion invalido");
-            esRecuperable = 0;
             break;
-            
+
         case INT_SVC:  // 2: Llamada al sistema - RECUPERABLE
             imprimirLog("Manejando syscall...");
-            /*
-             * NOTA: Aqui iria el manejador de syscalls del kernel.
-             * El numero de syscall esta en AC, parametros en pila.
-             *   manejar_syscall(palabraAEntero(registrosCpu.ac));
-             */
-            esRecuperable = 1;
+            /* Aqui iria el manejador de syscalls del kernel. */
             break;
-            
+
         case INT_TIMER:  // 3: Timer - RECUPERABLE
             imprimirLog("Interrupcion de reloj");
-            /*
-             * NOTA MULTIPROGRAMACION:
-             * Aqui el planificador decidiria si cambiar de proceso:
-             *   if (quantum_expirado()) {
-             *       guardar_pcb(proceso_actual);
-             *       proceso_actual = planificador_round_robin();
-             *       cargar_pcb(proceso_actual);
-             *   }
-             */
-            esRecuperable = 1;
             break;
-            
+
         case INT_IO_DONE:  // 4: Fin de E/S - RECUPERABLE
             imprimirLog("Operacion de E/S completada");
-            /*
-             * NOTA: Aqui se notificaria al proceso que su E/S termino.
-             *   despertar_proceso_bloqueado(proceso_esperando_io);
-             */
-            esRecuperable = 1;
             break;
-            
+
         case INT_INSTRUCCION_INVALIDA:  // 5: Instruccion invalida - FATAL
             imprimirLog("ERROR FATAL: Instruccion invalida o privilegiada");
-            esRecuperable = 0;
             break;
-            
+
         case INT_DIRECCION_INVALIDA:  // 6: Direccionamiento invalido - FATAL
             imprimirLog("ERROR FATAL: Violacion de proteccion de memoria");
-            esRecuperable = 0;
             break;
-            
+
         case INT_UNDERFLOW:  // 7: Underflow - FATAL
             imprimirLog("ERROR FATAL: Stack underflow");
-            esRecuperable = 0;
             break;
-            
+
         case INT_OVERFLOW:  // 8: Overflow - FATAL
             imprimirLog("ERROR FATAL: Overflow aritmetico");
-            esRecuperable = 0;
             break;
-            
+
         default:
             sprintf(buffer, "ERROR: Codigo de interrupcion desconocido: %d", codigoInterrupcion);
             imprimirLog(buffer);
-            esRecuperable = 0;
+            break;
     }
-    
-    // 5. Si es recuperable, restaurar contexto y volver a modo usuario
+
+    /* Si fue recuperable, restaurar registros desde la pila y volver a usuario */
     if (esRecuperable) {
-        restaurarContexto(&contextoGuardado);
+        /* Pop en orden inverso al push */
+        if (!popPalabra(&tmp)) { cpuEjecutando = 0; return 0; }
+        registrosCpu.psw.habilitarInterrupciones = palabraAEntero(tmp);
+        if (!popPalabra(&tmp)) { cpuEjecutando = 0; return 0; }
+        registrosCpu.psw.modoOperacion = palabraAEntero(tmp);
+        if (!popPalabra(&tmp)) { cpuEjecutando = 0; return 0; }
+        registrosCpu.psw.codigoCondicion = palabraAEntero(tmp);
+        if (!popPalabra(&tmp)) { cpuEjecutando = 0; return 0; }
+        registrosCpu.psw.pc = palabraAEntero(tmp);
+        if (!popPalabra(&tmp)) { cpuEjecutando = 0; return 0; }
+        registrosCpu.sp = palabraAEntero(tmp);
+        if (!popPalabra(&tmp)) { cpuEjecutando = 0; return 0; }
+        registrosCpu.rx = palabraAEntero(tmp);
+        if (!popPalabra(&tmp)) { cpuEjecutando = 0; return 0; }
+        registrosCpu.rl = palabraAEntero(tmp);
+        if (!popPalabra(&tmp)) { cpuEjecutando = 0; return 0; }
+        registrosCpu.rb = palabraAEntero(tmp);
+        if (!popPalabra(&tmp)) { cpuEjecutando = 0; return 0; }
+        registrosCpu.ac = tmp;
+
+        /* Forzar RX a la base fija (por seguridad)
+         * aunque ya lo hemos restaurado desde pila, mantenemos la invariancia. */
+        registrosCpu.rx = 1999;
+
+        /* Volver a modo usuario y re-habilitar interrupciones */
         registrosCpu.psw.modoOperacion = MODO_USUARIO;
         registrosCpu.psw.habilitarInterrupciones = INT_HABILITADAS;
-        imprimirLog("Retornando de interrupcion");
-    } else {
-        imprimirLog("Interrupcion fatal - Terminando programa");
-        cpuEjecutando = 0;
+        imprimirLog("Retornando de interrupcion (contexto restaurado desde pila)");
+        return 1;
     }
-    
-    return esRecuperable;
+
+    /* Si llegamos aqui, la interrupcion es fatal: terminar programa */
+    imprimirLog("Interrupcion fatal - Terminando programa");
+    cpuEjecutando = 0;
+    return 0;
 }
 
 /*

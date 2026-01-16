@@ -418,13 +418,15 @@ int ejecutarModoDebug() {
         // Mostrar informacion de la instruccion actual
         direccionFisica = registrosCpu.psw.pc + INICIO_MEMORIA_USUARIO;
         
-        printf("──────────────────────────────────────────────\n");
-        printf(" PC (logico): %05d  |  PC (fisico): %05d\n", 
-               registrosCpu.psw.pc, direccionFisica);
-        printf(" AC: %c%07d  |  CC: %d\n",
-               registrosCpu.ac.signo ? '-' : '+', 
-               registrosCpu.ac.digitos,
-               registrosCpu.psw.codigoCondicion);
+         printf("──────────────────────────────────────────────\n");
+         printf(" PC (logico): %05d  |  PC (fisico): %05d\n", 
+             registrosCpu.psw.pc, direccionFisica);
+         printf(" AC: %c%07d  |  CC: %d\n",
+             registrosCpu.ac.signo ? '-' : '+', 
+             registrosCpu.ac.digitos,
+             registrosCpu.psw.codigoCondicion);
+         /* Mostrar SP cada iteracion para trazas de la pila */
+         printf(" SP: %05d  |  RX: %05d\n", registrosCpu.sp, registrosCpu.rx);
         
         // Ejecutar un ciclo
         if (!cicloCpu()) {

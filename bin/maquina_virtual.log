@@ -1,24 +1,58 @@
 ================================================================================
  MAQUINA VIRTUAL - LOG DE SISTEMA
- Iniciado: 23:22:26
+ Iniciado: 20:40:06
  Archivo: maquina_virtual.log
 ================================================================================
 
-[23:22:26][SIS] Maquina virtual iniciada
-[23:22:26][SIS] Memoria inicializada
-[23:22:26][SIS] Disco inicializado
-[23:22:26][SIS] DMA inicializado
-[23:22:26][SIS] Loader inicializado
-[23:22:26][SIS] CPU inicializado
-[23:22:32][SIS] Comando recibido: ayuda
-[23:22:40][SIS] Comando recibido: cargar ejemplo1.prog
-[23:22:40][LOADER] Iniciando carga de: ejemplo1.prog
-[23:22:40][LOADER] Programa cargado exitosamente
-[23:22:53][SIS] Comando recibido: registers
-[23:23:05][SIS] Comando recibido: registros
-[23:23:50][SIS] Comando recibido: run
-[23:23:50][SIS] Iniciando ejecucion en modo NORMAL
-[23:23:50][CPU] Iniciando ejecucion en modo normal
-[23:23:50][CPU] Ejecucion normal finalizada
-[23:23:50][SIS] Ejecucion finalizada
-[23:26:32][SIS] Comando recibido: registros
+[20:40:06][SIS] Maquina virtual iniciada
+[20:40:06][SIS] Memoria inicializada
+[20:40:06][SIS] Disco inicializado
+[20:40:06][SIS] DMA inicializado
+[20:40:06][SIS] Loader inicializado
+[20:40:06][SIS] CPU inicializado
+[20:40:40][SIS] Comando recibido: cargar prog_double_pop.prog
+[20:40:40][LOADER] Iniciando carga de: prog_double_pop.prog
+[20:40:40][LOADER] Programa cargado exitosamente
+[20:40:53][SIS] Comando recibido: run
+[20:40:53][SIS] Iniciando ejecucion en modo NORMAL
+[20:40:53][CPU] Iniciando ejecucion en modo normal
+[20:40:53][CPU] Ejecucion normal finalizada
+[20:40:53][SIS] Ejecucion finalizada
+[20:43:48][SIS] Comando recibido: cargar prog_double_pop.prog
+[20:43:48][LOADER] Iniciando carga de: prog_double_pop.prog
+[20:43:48][LOADER] Programa cargado exitosamente
+[20:43:53][SIS] Comando recibido: debug
+[20:43:53][SIS] Iniciando ejecucion en modo DEBUG
+[20:43:53][CPU] Iniciando ejecucion en modo debug
+[20:43:53][DEBUG] PC=0 Op=06 Dir=0 Val=00000 AC=0
+[20:44:07][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:30][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:45][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:47][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:47][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:48][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:48][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:48][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:48][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:49][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:49][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:49][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:49][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:49][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:50][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:50][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:50][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:50][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:50][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:51][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:51][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:51][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:51][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:51][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:52][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:52][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:52][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:52][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:52][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:53][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
+[20:44:53][DEBUG] PC=1 Op=06 Dir=0 Val=00000 AC=0
