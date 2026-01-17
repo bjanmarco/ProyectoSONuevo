@@ -1,20 +1,28 @@
 ================================================================================
  MAQUINA VIRTUAL - LOG DE SISTEMA
- Iniciado: 00:44:02
+ Iniciado: 14:38:39
  Archivo: maquina_virtual.log
 ================================================================================
 
-[00:44:02][SIS] Maquina virtual iniciada
-[00:44:02][SIS] Memoria inicializada
-[00:44:02][SIS] Disco inicializado
-[00:44:02][SIS] DMA inicializado
-[00:44:02][SIS] Loader inicializado
-[00:44:02][SIS] CPU inicializado
-[00:44:14][SIS] Comando recibido: cargar PDF.txt
-[00:44:14][LOADER] Iniciando carga de: PDF.txt
-[00:44:14][LOADER] Programa cargado exitosamente
-[00:44:15][SIS] Comando recibido: run
-[00:44:15][SIS] Iniciando ejecucion en modo NORMAL
-[00:44:15][CPU] Iniciando ejecucion en modo normal
-[00:44:15][CPU] Ejecucion normal finalizada
-[00:44:15][SIS] Ejecucion finalizada
+[14:38:39][SIS] Maquina virtual iniciada
+[14:38:39][SIS] Memoria inicializada
+[14:38:39][SIS] Disco inicializado
+[14:38:39][SIS] DMA inicializado
+[14:38:39][SIS] Loader inicializado
+[14:38:39][SIS] CPU inicializado
+[14:39:23][SIS] Comando recibido: ayuda
+[14:39:28][SIS] Comando recibido: estado
+[14:39:48][SIS] Comando recibido: registros
+[14:40:11][SIS] Comando recibido: limpiar
+[14:40:15][SIS] Comando recibido: ayuda
+[14:40:22][SIS] Comando recibido: reiniciar
+[14:40:22][SIS] Reiniciando sistema
+[14:40:22][SIS] Sistema reiniciado
+[14:40:57][SIS] Comando recibido: estado
+[15:12:48][SIS] Finalizando maquina virtual
+
+================================================================================
+ FIN DEL LOG
+ Finalizado: 15:12:48
+ Total lineas: 16
+================================================================================

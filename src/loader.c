@@ -278,20 +278,4 @@ void prepararEjecucion() {
            registrosCpu.rx, registrosCpu.sp);
 } 
 
-/*
- * reiniciarLoader
- * ---------------
- * Reinicia el loader para comenzar desde el inicio.
- */
-void reiniciarLoader() {
-    siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO;
-    
-    memset(programaActual.nombre, 0, MAX_NOMBRE_PROGRAMA);
-    programaActual.lineaInicio = 0;
-    programaActual.numeroPalabras = 0;
-    programaActual.direccionBase = 0;
-    programaActual.direccionLimite = 0;
-    
-    printf("[LOADER] Loader reiniciado. Direccion base: %d\n",
-           siguienteDireccionDisponible);
-}
+

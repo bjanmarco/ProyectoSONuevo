@@ -92,13 +92,6 @@ int cargarPrograma(const char *rutaArchivo);
  */
 void prepararEjecucion();
 
-/*
- * reiniciarLoader
- * ---------------
- * Reinicia el loader al estado inicial.
- * Vuelve a poner siguienteDireccionDisponible en 300.
- * Util para reiniciar la maquina virtual.
- */
-void reiniciarLoader();
+
 
 #endif /* LOADER_H */
