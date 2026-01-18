@@ -1,10 +1,7 @@
-/*
- * ============================================================================
- * ARCHIVO: loader.c
+/* ARCHIVO: loader.c
  * DESCRIPCION: Implementacion del cargador de programas.
  *              Lee archivos de programa y los carga en memoria.
  *              Segun especificaciones de prueba.txt seccion 6.
- * ============================================================================
  */
 
 #include <stdio.h>
@@ -13,33 +10,29 @@
 #include "../include/loader.h"
 #include "../include/memoria.h"
 #include "../include/hardware.h"
+#include "../include/logger.h"
 
-/* ============================================================================
- * DEFINICION DE VARIABLES GLOBALES
- * ============================================================================ */
+// DEFINICION DE VARIABLES GLOBALES
 
 // Siguiente direccion de memoria disponible para cargar programas
-// Inicia en 300 (INICIO_MEMORIA_USUARIO)
+// Inicia en 300, onde se empieza a escribir el proximo programa
 int siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO;
 
-// Informacion del programa actualmente cargado
+// Instancia de la estructura para guardar la informacion 
+// del programa actualmente cargado
 InfoPrograma programaActual;
 
 // Referencia externa a los registros del CPU (definidos en cpu.c)
 extern Registros registrosCpu;
 
-/* ============================================================================
- * IMPLEMENTACION DE FUNCIONES
- * ============================================================================ */
+// IMPLEMENTACION DE FUNCIONES
 
-/*
- * inicializarLoader
- * -----------------
+/* inicializarLoader
  * Inicializa el loader al estado inicial.
  */
 void inicializarLoader() {
     // Establecer la primera direccion disponible
-    siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO;  // 300
+    siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO;  
     
     // Limpiar informacion del programa actual
     memset(programaActual.nombre, 0, MAX_NOMBRE_PROGRAMA);
@@ -52,75 +45,80 @@ void inicializarLoader() {
            siguienteDireccionDisponible);
 }
 
-/*
- * cargarPrograma
- * ---------------
+/* cargarPrograma
  * Carga un programa desde archivo a memoria.
  */
 int cargarPrograma(const char *rutaArchivo) {
     FILE *archivo;
     char linea[MAX_LINEA];
-    int lineaInicio = -1;
-    int numeroPalabrasHeader = -1;
+    int lineaInicio = -1; // en -1 para validar si esta info esta llegando bien
+    int numeroPalabrasHeader = -1; // en -1 para validar si esta info esta llegando bien
     char nombrePrograma[MAX_NOMBRE_PROGRAMA] = "";
-    int instruccionesLeidas = 0;
-    Palabra instruccion;
+    int instruccionesLeidas = 0; // contador de instrucciones leidas
+    Palabra instruccion; 
     long valorInstruccion;
 
     // Buffer temporal para validar antes de escribir a memoria
-    Palabra *buffer = NULL;
-    int bufferCap = 0;
-    int bufferLen = 0;
+    Palabra *buffer = NULL; // Puntero a Palabra que crecera segun lo necesitamos
+    int bufferCap = 0; // capacidad del buffer
+    int bufferLen = 0; // longitud del buffer
 
-    printf("[LOADER] Intentando cargar: %s\n", rutaArchivo);
+    logLoader("Intentando cargar: %s", rutaArchivo);
 
     // Abrir el archivo
-    archivo = fopen(rutaArchivo, "r");
+    archivo = fopen(rutaArchivo, "r"); // prueba modo lectura
     if (archivo == NULL) {
         printf("[LOADER] ERROR: No se pudo abrir el archivo %s\n", rutaArchivo);
         return 1;
     }
 
+    // CICLO PARA LEER EL ARCHIVO
     // Leer y validar el archivo (no escribir en memoria aún)
     while (fgets(linea, MAX_LINEA, archivo) != NULL) {
         // Eliminar salto de linea
-        linea[strcspn(linea, "\n")] = '\0';
-
+        // busca donde esta el \n y lo reemplaza por \0 (terminador de cadena)
+        linea[strcspn(linea, "\n")] = '\0';    
         // Ignorar lineas vacias y comentarios
         if (strlen(linea) == 0 || linea[0] == '/' || linea[0] == '#') {
             continue;
         }
 
         // Parsear _start
+        // strncmp compara partes de cadenas de caracteres 
+        // en este caso compara los primeros 6 caracteres de linea con "_start" 
+        // si son iguales, entonces linea comienza con "_start"
+        // sscanf extrae el valor de la linea   
         if (strncmp(linea, "_start", 6) == 0) {
             if (sscanf(linea, "_start %d", &lineaInicio) != 1) {
                 printf("[LOADER] ERROR: _start invalido\n");
                 fclose(archivo);
                 return 1;
             }
-            printf("[LOADER] _start = %d\n", lineaInicio);
+            logLoader("_start = %d", lineaInicio);
             continue;
         }
 
         // Parsear .NumeroPalabras
+        // se usa la misma logica que para _start   
         if (strncmp(linea, ".NumeroPalabras", 15) == 0) {
             if (sscanf(linea, ".NumeroPalabras %d", &numeroPalabrasHeader) != 1) {
                 printf("[LOADER] ERROR: .NumeroPalabras invalido\n");
                 fclose(archivo);
                 return 1;
             }
-            printf("[LOADER] NumeroPalabras (encabezado) = %d\n", numeroPalabrasHeader);
+            logLoader("NumeroPalabras (encabezado) = %d", numeroPalabrasHeader);
             continue;
         }
 
         // Parsear .NombreProg
+        // se usa la misma logica que para _start       
         if (strncmp(linea, ".NombreProg", 11) == 0) {
             if (sscanf(linea, ".NombreProg %49s", nombrePrograma) != 1) {
                 printf("[LOADER] ERROR: .NombreProg invalido\n");
                 fclose(archivo);
                 return 1;
             }
-            printf("[LOADER] NombreProg = %s\n", nombrePrograma);
+            logLoader("NombreProg = %s", nombrePrograma);
             continue;
         }
 
@@ -134,6 +132,7 @@ int cargarPrograma(const char *rutaArchivo) {
         int len = 0;
         while (linea[len] != '\0') len++;
         // Validar que la linea contenga solo digitos (0-9)
+        // un bucle para verificar que todos los caracteres sean digitos    
         int i, ok = 1;
         for (i = 0; i < len; i++) {
             if (linea[i] < '0' || linea[i] > '9') { ok = 0; break; }
@@ -146,7 +145,7 @@ int cargarPrograma(const char *rutaArchivo) {
         }
 
         // Convertir la linea a entero largo
-        valorInstruccion = atol(linea);
+        valorInstruccion = atol(linea); // string a long    
         if (valorInstruccion < 0 || valorInstruccion > 99999999L) {
             printf("[LOADER] ERROR: Valor de instruccion fuera de rango: %ld\n", valorInstruccion);
             fclose(archivo);
@@ -154,7 +153,7 @@ int cargarPrograma(const char *rutaArchivo) {
             return 1;
         }
 
-        // CORRECCION: Las instrucciones siempre son positivas en este formato de texto
+        // Las instrucciones siempre son positivas en este formato de texto
         // y ocupan 8 digitos. El primer digito es parte del opcode, NO signo.
         instruccion.signo = 0;
         instruccion.digitos = (int)valorInstruccion;
@@ -205,12 +204,12 @@ int cargarPrograma(const char *rutaArchivo) {
         return 1;
     }
 
-    // Escribir buffer a memoria (commit)
+    // Escribir buffer a memoria
     int i;
     int direccionBase = siguienteDireccionDisponible;
     for (i = 0; i < bufferLen; i++) {
         escribirMemoria(direccionBase + i, buffer[i]);
-        printf("[LOADER] Instruccion %d cargada en direccion %d: %d%07d\n",
+        logLoader("Instruccion %d cargada en direccion %d: %d%07d",
                i, direccionBase + i, buffer[i].signo, buffer[i].digitos);
     }
 
@@ -227,13 +226,11 @@ int cargarPrograma(const char *rutaArchivo) {
     // RL = direccion de la ultima instruccion (base + numeroPalabras - 1)
     programaActual.direccionLimite = direccionUltimaInstr;
 
-    printf("[LOADER] ============================================\n");
-    printf("[LOADER] Programa '%s' cargado exitosamente\n", programaActual.nombre);
-    printf("[LOADER] Instrucciones: %d\n", bufferLen);
-    printf("[LOADER] RB (direccion base): %d\n", programaActual.direccionBase);
-    printf("[LOADER] RL (direccion limite): %d\n", programaActual.direccionLimite);
-    printf("[LOADER] PC inicial (logico): %d\n", programaActual.lineaInicio);
-    printf("[LOADER] ============================================\n");
+    logLoader("Programa '%s' cargado exitosamente", programaActual.nombre);
+    logLoader("Instrucciones: %d", bufferLen);
+    logLoader("RB (direccion base): %d", programaActual.direccionBase);
+    logLoader("RL (direccion limite): %d", programaActual.direccionLimite);
+    logLoader("PC inicial (logico): %d", programaActual.lineaInicio);
 
     // Actualizar siguiente direccion disponible (despues del programa)
     siguienteDireccionDisponible = direccionBase + bufferLen;
@@ -242,12 +239,11 @@ int cargarPrograma(const char *rutaArchivo) {
     return 0;  // Exito
 } 
 
-/*
- * prepararEjecucion
- * -----------------
+/* prepararEjecucion
  * Configura los registros del CPU para ejecutar el programa cargado.
  */
 void prepararEjecucion() {
+    // Deja la CPU lista para que al llamar a cicloCpu se ejecute el programa   
     // Establecer registros de proteccion
     registrosCpu.rb = programaActual.direccionBase;
     registrosCpu.rl = programaActual.direccionLimite; // RL = direccion de la ultima instruccion (incluido)
@@ -271,10 +267,10 @@ void prepararEjecucion() {
     registrosCpu.ac.signo = 0;
     registrosCpu.ac.digitos = 0;
 
-    printf("[LOADER] CPU preparado para ejecucion:\n");
-    printf("[LOADER]   RB=%d, RL=%d, PC=%d (logico)\n",
+    logLoader("CPU preparado para ejecucion:");
+    logLoader("  RB=%d, RL=%d, PC=%d (logico)",
            registrosCpu.rb, registrosCpu.rl, registrosCpu.psw.pc);
-    printf("[LOADER]   RX=%d, SP=%d\n",
+    logLoader("  RX=%d, SP=%d",
            registrosCpu.rx, registrosCpu.sp);
 } 
 

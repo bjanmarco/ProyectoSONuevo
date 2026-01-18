@@ -1,10 +1,7 @@
-/*
- * ============================================================================
- * ARCHIVO: logger.h
+/* ARCHIVO: logger.h
  * DESCRIPCION: Sistema de logging centralizado de la maquina virtual.
  *              Registra todas las acciones del sistema en archivo y consola.
  *              Segun especificaciones de prueba.txt seccion 7.
- * ============================================================================
  */
 
 #ifndef LOGGER_H
@@ -12,10 +9,10 @@
 
 #include <stdio.h>
 
-/* ============================================================================
- * NIVELES DE LOG
- * Define la categoria/origen del mensaje de log
- * ============================================================================ */
+// NIVELES DE LOG
+/*Crea un nuevo tipo de dato llamado NivelLog.
+* Asigna números enteros secuenciales a las etiquetas: LOG_CPU será 0, LOG_MEMORIA será 1, etc.
+* Uso: Sirve para categorizar los mensajes y ponerles una etiqueta como [CPU] o [DISCO] automáticamente.*/
 typedef enum {
     LOG_CPU,            // Mensajes del CPU (ciclos, instrucciones)
     LOG_MEMORIA,        // Mensajes de acceso a memoria
@@ -27,20 +24,14 @@ typedef enum {
     LOG_DEBUG           // Mensajes de depuracion (modo debug)
 } NivelLog;
 
-/* ============================================================================
- * CONSTANTES DEL LOGGER
- * ============================================================================ */
-
+// CONSTANTES DEL LOGGER 
 // Nombre del archivo de log por defecto
 #define ARCHIVO_LOG_DEFECTO "maquina_virtual.log"
 
-// Tamanio maximo de un mensaje de log
+// Tamanio maximo del buffer de texto para un solo mensaje del log
 #define MAX_MENSAJE_LOG 512
 
-/* ============================================================================
- * VARIABLES GLOBALES DEL LOGGER
- * ============================================================================ */
-
+// VARIABLES GLOBALES DEL LOGGER
 // Puntero al archivo de log abierto
 extern FILE *archivoLog;
 
@@ -50,38 +41,26 @@ extern int loggerActivo;
 // Contador de lineas de log
 extern int contadorLineasLog;
 
-/* ============================================================================
- * API DEL LOGGER (Prototipos de Funciones)
- * ============================================================================ */
-
-/*
- * inicializarLogger
- * -----------------
+// PROTOTIPOS DE FUNCIONES DEL LOGGER 
+/* inicializarLogger
  * Inicializa el sistema de logging.
- * Abre el archivo de log para escritura.
- * 
+ * Abre el archivo de log para escritura. 
  * Parametros:
  *   nombreArchivo - Nombre del archivo de log (NULL para usar defecto)
- * 
  * Retorna:
  *   0 si exito, 1 si error al abrir archivo
  */
 int inicializarLogger(const char *nombreArchivo);
 
-/*
- * finalizarLogger
- * ---------------
+/* finalizarLogger
  * Cierra el sistema de logging.
  * Cierra el archivo de log y libera recursos.
  */
 void finalizarLogger();
 
-/*
- * escribirLog
- * -----------
+/* escribirLog
  * Escribe un mensaje en el archivo de log.
- * Los mensajes de tipo LOG_INTERRUPCION tambien se imprimen en stdout.
- * 
+ * Los mensajes de tipo LOG_INTERRUPCION tambien se imprimen en consola.
  * Parametros:
  *   nivel   - Nivel/categoria del mensaje
  *   formato - Formato del mensaje (como printf)
@@ -89,60 +68,44 @@ void finalizarLogger();
  */
 void escribirLog(NivelLog nivel, const char *formato, ...);
 
-/*
- * logCpu
- * ------
+/* logCpu
  * Macro para log de CPU (mas conveniente de usar)
  */
 #define logCpu(fmt, ...) escribirLog(LOG_CPU, fmt, ##__VA_ARGS__)
 
-/*
- * logMemoria
- * ----------
+/* logMemoria
  * Macro para log de memoria
  */
 #define logMemoria(fmt, ...) escribirLog(LOG_MEMORIA, fmt, ##__VA_ARGS__)
 
-/*
- * logDisco
- * --------
+/* logDisco
  * Macro para log de disco
  */
 #define logDisco(fmt, ...) escribirLog(LOG_DISCO, fmt, ##__VA_ARGS__)
 
-/*
- * logDma
- * ------
+/* logDma
  * Macro para log de DMA
  */
 #define logDma(fmt, ...) escribirLog(LOG_DMA, fmt, ##__VA_ARGS__)
 
-/*
- * logLoader
- * ---------
+/* logLoader
  * Macro para log del loader
  */
 #define logLoader(fmt, ...) escribirLog(LOG_LOADER, fmt, ##__VA_ARGS__)
 
-/*
- * logInterrupcion
- * ---------------
+/* logInterrupcion
  * Macro para log de interrupciones (tambien va a stdout)
  */
 #define logInterrupcion(fmt, ...) escribirLog(LOG_INTERRUPCION, fmt, ##__VA_ARGS__)
 
-/*
- * logSistema
- * ----------
+/* logSistema
  * Macro para log del sistema
  */
 #define logSistema(fmt, ...) escribirLog(LOG_SISTEMA, fmt, ##__VA_ARGS__)
 
-/*
- * logDebug
- * --------
+/* logDebug
  * Macro para log de depuracion
  */
 #define logDebug(fmt, ...) escribirLog(LOG_DEBUG, fmt, ##__VA_ARGS__)
 
-#endif /* LOGGER_H */
+#endif 

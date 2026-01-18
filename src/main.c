@@ -124,8 +124,8 @@ int main(int argc, char *argv[]) {
             strncpy(rutaArchivo, comando + 7, MAX_RUTA - 1);
             rutaArchivo[MAX_RUTA - 1] = '\0';
             
-            printf("\n[LOADER] Cargando programa: %s\n", rutaArchivo);
-            logLoader("Iniciando carga de: %s", rutaArchivo);
+            // printf("\n[LOADER] Cargando programa: %s\n", rutaArchivo);
+            logLoader("Cargando programa: %s", rutaArchivo);
             
             if (cargarPrograma(rutaArchivo) == 0) {
                 programaCargado = 1;

@@ -1,28 +1,122 @@
-================================================================================
  MAQUINA VIRTUAL - LOG DE SISTEMA
- Iniciado: 14:38:39
+ Iniciado: 07:00:29
  Archivo: maquina_virtual.log
-================================================================================
-
-[14:38:39][SIS] Maquina virtual iniciada
-[14:38:39][SIS] Memoria inicializada
-[14:38:39][SIS] Disco inicializado
-[14:38:39][SIS] DMA inicializado
-[14:38:39][SIS] Loader inicializado
-[14:38:39][SIS] CPU inicializado
-[14:39:23][SIS] Comando recibido: ayuda
-[14:39:28][SIS] Comando recibido: estado
-[14:39:48][SIS] Comando recibido: registros
-[14:40:11][SIS] Comando recibido: limpiar
-[14:40:15][SIS] Comando recibido: ayuda
-[14:40:22][SIS] Comando recibido: reiniciar
-[14:40:22][SIS] Reiniciando sistema
-[14:40:22][SIS] Sistema reiniciado
-[14:40:57][SIS] Comando recibido: estado
-[15:12:48][SIS] Finalizando maquina virtual
-
-================================================================================
- FIN DEL LOG
- Finalizado: 15:12:48
- Total lineas: 16
-================================================================================
+[07:00:29][SIS] Maquina virtual iniciada
+[07:00:29][SIS] Memoria inicializada
+[07:00:29][SIS] Disco inicializado
+[07:00:29][SIS] DMA inicializado
+[07:00:29][SIS] Loader inicializado
+[07:00:29][CPU] [Ciclo 0] Inicializando CPU...
+[07:00:29][CPU] [Ciclo 0] CPU inicializado correctamente
+[07:00:29][SIS] CPU inicializado
+[07:00:33][SIS] Comando recibido: ayuda
+[07:00:44][SIS] Comando recibido: cargar P_ARI.txt
+[07:00:44][LOADER] Cargando programa: P_ARI.txt
+[07:00:44][LOADER] Intentando cargar: P_ARI.txt
+[07:00:44][LOADER] _start = 1
+[07:00:44][LOADER] NumeroPalabras (encabezado) = 6
+[07:00:44][LOADER] NombreProg = P_ARI
+[07:00:44][LOADER] Instruccion 0 cargada en direccion 300: 04100010
+[07:00:44][LOADER] Instruccion 1 cargada en direccion 301: 00100005
+[07:00:44][LOADER] Instruccion 2 cargada en direccion 302: 01100003
+[07:00:44][LOADER] Instruccion 3 cargada en direccion 303: 02100002
+[07:00:44][LOADER] Instruccion 4 cargada en direccion 304: 03100004
+[07:00:44][LOADER] Instruccion 5 cargada en direccion 305: 03100000
+[07:00:44][LOADER] Programa 'P_ARI' cargado exitosamente
+[07:00:44][LOADER] Instrucciones: 6
+[07:00:44][LOADER] RB (direccion base): 300
+[07:00:44][LOADER] RL (direccion limite): 305
+[07:00:44][LOADER] PC inicial (logico): 0
+[07:00:44][LOADER] Programa cargado exitosamente
+[07:00:50][SIS] Comando recibido: run
+[07:00:50][SIS] Iniciando ejecucion en modo NORMAL
+[07:00:50][LOADER] CPU preparado para ejecucion:
+[07:00:50][LOADER]   RB=300, RL=305, PC=0 (logico)
+[07:00:50][LOADER]   RX=1999, SP=1999
+[07:00:50][CPU] Iniciando ejecucion en modo normal
+[07:00:50][CPU] [Ciclo 0] Iniciando ejecucion del CPU
+[07:00:50][CPU] [Ciclo 0] FETCH-DECODE: Op=04 Dir=1 Val=00010 en PC=00000
+[07:00:50][CPU] [Ciclo 0] FETCH-DECODE: Op=00 Dir=1 Val=00005 en PC=00001
+[07:00:50][CPU] [Ciclo 0] FETCH-DECODE: Op=01 Dir=1 Val=00003 en PC=00002
+[07:00:50][CPU] [Ciclo 0] FETCH-DECODE: Op=02 Dir=1 Val=00002 en PC=00003
+[07:00:50][CPU] [Ciclo 0] FETCH-DECODE: Op=03 Dir=1 Val=00004 en PC=00004
+[07:00:50][CPU] [Ciclo 0] FETCH-DECODE: Op=03 Dir=1 Val=00000 en PC=00005
+[07:00:50][CPU] [Ciclo 0] ERROR: Division por cero
+[07:00:50][CPU] [Ciclo 0] === INTERRUPCION 8 ===
+[07:00:50][CPU] [Ciclo 0] Guardando contexto en la pila...
+[07:00:50][CPU] [Ciclo 0]   [SP=1998] AC apilado
+[07:00:50][CPU] [Ciclo 0]   [SP=1997] RB apilado
+[07:00:50][CPU] [Ciclo 0]   [SP=1996] RL apilado
+[07:00:50][CPU] [Ciclo 0]   [SP=1995] RX apilado
+[07:00:50][CPU] [Ciclo 0]   [SP=1994] SP original (1999) apilado
+[07:00:50][CPU] [Ciclo 0]   [SP=1993] PSW apilado
+[07:00:50][CPU] [Ciclo 0] Contexto guardado exitosamente. SP: 1999 -> 1993 (6 palabras)
+[07:00:50][CPU] [Ciclo 0] ERROR FATAL: Overflow aritmetico
+[07:00:50][CPU] [Ciclo 0] Interrupcion fatal - Terminando programa
+[07:00:50][CPU] [Ciclo 0] CPU detenido
+[07:00:50][CPU]  ESTADO DEL CPU 
+[07:00:50][CPU] AC:  +0000006
+[07:00:50][CPU] PC:  00006 (logico)
+[07:00:50][CPU] MAR: +0000005
+[07:00:50][CPU] MDR: +3100000
+[07:00:50][CPU] IR:  Op=03 Dir=1 Val=00000
+[07:00:50][CPU] RB:  00300  RL: 00305
+[07:00:50][CPU] RX:  01999  SP: 01993
+[07:00:50][CPU] PSW: CC=2 Modo=USUARIO Int=HAB
+[07:00:50][CPU] Ejecucion normal finalizada
+[07:00:50][SIS] Ejecucion finalizada
+[07:02:08][SIS] Comando recibido: ayuda
+[07:02:14][SIS] Comando recibido: cargar DMA.txt
+[07:02:14][LOADER] Cargando programa: DMA.txt
+[07:02:14][LOADER] Intentando cargar: DMA.txt
+[07:02:14][LOADER] _start = 1
+[07:02:14][LOADER] NumeroPalabras (encabezado) = 11
+[07:02:14][LOADER] NombreProg = DMA
+[07:02:14][LOADER] Instruccion 0 cargada en direccion 306: 04100042
+[07:02:14][LOADER] Instruccion 1 cargada en direccion 307: 05000010
+[07:02:14][LOADER] Instruccion 2 cargada en direccion 308: 028000000
+[07:02:14][LOADER] Instruccion 3 cargada en direccion 309: 029000000
+[07:02:14][LOADER] Instruccion 4 cargada en direccion 310: 030000000
+[07:02:14][LOADER] Instruccion 5 cargada en direccion 311: 031100001
+[07:02:14][LOADER] Instruccion 6 cargada en direccion 312: 032000010
+[07:02:14][LOADER] Instruccion 7 cargada en direccion 313: 033000000
+[07:02:14][LOADER] Instruccion 8 cargada en direccion 314: 04100001
+[07:02:14][LOADER] Instruccion 9 cargada en direccion 315: 025000000
+[07:02:14][LOADER] Instruccion 10 cargada en direccion 316: 013000000
+[07:02:14][LOADER] Programa 'DMA' cargado exitosamente
+[07:02:14][LOADER] Instrucciones: 11
+[07:02:14][LOADER] RB (direccion base): 306
+[07:02:14][LOADER] RL (direccion limite): 316
+[07:02:14][LOADER] PC inicial (logico): 0
+[07:02:14][LOADER] Programa cargado exitosamente
+[07:02:18][SIS] Comando recibido: run
+[07:02:18][SIS] Iniciando ejecucion en modo NORMAL
+[07:02:18][LOADER] CPU preparado para ejecucion:
+[07:02:18][LOADER]   RB=306, RL=316, PC=0 (logico)
+[07:02:18][LOADER]   RX=1999, SP=1999
+[07:02:18][CPU] Iniciando ejecucion en modo normal
+[07:02:18][CPU] [Ciclo 0] Iniciando ejecucion del CPU
+[07:02:18][CPU] [Ciclo 0] FETCH-DECODE: Op=04 Dir=1 Val=00042 en PC=00000
+[07:02:18][CPU] [Ciclo 0] === INTERRUPCION 8 ===
+[07:02:18][CPU] [Ciclo 0] Guardando contexto en la pila...
+[07:02:18][CPU] [Ciclo 0]   [SP=1998] AC apilado
+[07:02:18][CPU] [Ciclo 0]   [SP=1997] RB apilado
+[07:02:18][CPU] [Ciclo 0]   [SP=1996] RL apilado
+[07:02:18][CPU] [Ciclo 0]   [SP=1995] RX apilado
+[07:02:18][CPU] [Ciclo 0]   [SP=1994] SP original (1999) apilado
+[07:02:18][CPU] [Ciclo 0]   [SP=1993] PSW apilado
+[07:02:18][CPU] [Ciclo 0] Contexto guardado exitosamente. SP: 1999 -> 1993 (6 palabras)
+[07:02:18][CPU] [Ciclo 0] ERROR FATAL: Overflow aritmetico
+[07:02:18][CPU] [Ciclo 0] Interrupcion fatal - Terminando programa
+[07:02:18][CPU] [Ciclo 0] CPU detenido
+[07:02:18][CPU]  ESTADO DEL CPU 
+[07:02:18][CPU] AC:  +0000042
+[07:02:18][CPU] PC:  00001 (logico)
+[07:02:18][CPU] MAR: +0000000
+[07:02:18][CPU] MDR: +4100042
+[07:02:18][CPU] IR:  Op=04 Dir=1 Val=00042
+[07:02:18][CPU] RB:  00306  RL: 00316
+[07:02:18][CPU] RX:  01999  SP: 01993
+[07:02:18][CPU] PSW: CC=0 Modo=USUARIO Int=HAB
+[07:02:18][CPU] Ejecucion normal finalizada
+[07:02:18][SIS] Ejecucion finalizada

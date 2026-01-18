@@ -1,20 +1,15 @@
-/*
- * ============================================================================
- * ARCHIVO: memoria.c
+/* ARCHIVO: memoria.c
  * DESCRIPCION: Implementacion del modulo de memoria RAM de la maquina virtual.
  *              Contiene las funciones para inicializar, leer y escribir
  *              en la memoria principal con control de acceso al bus.
  *              Segun especificaciones de prueba.txt seccion 2 y 4.
- * ============================================================================
  */
 
 #include <stdio.h>
 #include <string.h>
 #include "../include/memoria.h"
 
-/* ============================================================================
- * DEFINICION DE VARIABLES GLOBALES
- * ============================================================================ */
+// DEFINICION DE VARIABLES GLOBALES 
 
 // Arreglo de memoria principal: 2000 palabras
 // Posiciones 0-299: Reservadas para el Sistema Operativo
@@ -25,13 +20,9 @@ Palabra memoriaPrincipal[TAMANO_MEMORIA];
 // Evita condiciones de carrera entre CPU y DMA al acceder a memoria
 sem_t bloqueoBus;
 
-/* ============================================================================
- * IMPLEMENTACION DE FUNCIONES
- * ============================================================================ */
+// IMPLEMENTACION DE FUNCIONES
 
-/*
- * inicializarMemoria
- * ------------------
+/* inicializarMemoria
  * Inicializa toda la memoria RAM a cero y el semaforo del bus.
  * Esta funcion debe llamarse antes de usar cualquier otra funcion de memoria.
  */
@@ -51,33 +42,25 @@ void inicializarMemoria() {
     
     // Imprimir mensaje de log
     printf("[MEMORIA] Memoria inicializada: %d posiciones\n", TAMANO_MEMORIA);
-    printf("[MEMORIA] Area SO: 0-%d, Area Usuario: %d-%d\n", 
-           TAMANO_MEMORIA_SO - 1, INICIO_MEMORIA_USUARIO, TAMANO_MEMORIA - 1);
+    printf("[MEMORIA] Area SO: 0-%d, Area Usuario: %d-%d\n",  TAMANO_MEMORIA_SO - 1, INICIO_MEMORIA_USUARIO, TAMANO_MEMORIA - 1);
     printf("[MEMORIA] Semaforo del bus inicializado\n");
 }
 
-/*
- * finalizarMemoria
- * ----------------
+/* finalizarMemoria
  * Libera los recursos de la memoria, especificamente el semaforo.
  * Debe llamarse al finalizar el programa para evitar fugas de recursos.
  */
 void finalizarMemoria() {
     // Destruir el semaforo del bus
     sem_destroy(&bloqueoBus);
-    
     printf("[MEMORIA] Recursos de memoria liberados\n");
 }
 
-/*
- * leerMemoria
- * -----------
+/* leerMemoria
  * Lee una palabra de la direccion de memoria especificada.
  * Adquiere el semaforo del bus antes de leer para evitar conflictos.
- * 
  * Parametros:
  *   direccion - Direccion de memoria a leer (0 a 1999)
- * 
  * Retorna:
  *   La Palabra en esa direccion, o una palabra cero si es invalida.
  */
@@ -105,12 +88,9 @@ Palabra leerMemoria(int direccion) {
     return resultado;
 }
 
-/*
- * escribirMemoria
- * ---------------
+/* escribirMemoria
  * Escribe una palabra en la direccion de memoria especificada.
  * Adquiere el semaforo del bus antes de escribir para evitar conflictos.
- * 
  * Parametros:
  *   direccion - Direccion de memoria donde escribir (0 a 1999)
  *   dato      - La Palabra a almacenar

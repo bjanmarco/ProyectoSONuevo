@@ -1,10 +1,7 @@
-/*
- * ============================================================================
- * ARCHIVO: logger.c
+/* ARCHIVO: logger.c
  * DESCRIPCION: Implementacion del sistema de logging centralizado.
  *              Registra todas las acciones en archivo .log y consola.
  *              Segun especificaciones de prueba.txt seccion 7.
- * ============================================================================
  */
 
 #include <stdio.h>
@@ -14,9 +11,7 @@
 #include <time.h>
 #include "../include/logger.h"
 
-/* ============================================================================
- * DEFINICION DE VARIABLES GLOBALES
- * ============================================================================ */
+// DEFINICION DE VARIABLES GLOBALES 
 
 // Puntero al archivo de log
 FILE *archivoLog = NULL;
@@ -27,15 +22,11 @@ int loggerActivo = 0;
 // Contador de lineas de log
 int contadorLineasLog = 0;
 
-/* ============================================================================
- * FUNCIONES AUXILIARES
- * ============================================================================ */
+// FUNCIONES AUXILIARES 
 
-/*
- * obtenerNombreNivel
- * ------------------
+/* obtenerNombreNivel
  * Retorna el nombre del nivel de log como string.
- */
+*/
 static const char* obtenerNombreNivel(NivelLog nivel) {
     switch (nivel) {
         case LOG_CPU:           return "CPU";
@@ -50,30 +41,31 @@ static const char* obtenerNombreNivel(NivelLog nivel) {
     }
 }
 
-/*
- * obtenerTimestamp
- * ----------------
+/* obtenerTimestamp
  * Obtiene la marca de tiempo actual en formato HH:MM:SS.
- */
+ * Esta funcion fue basada en tutoriales que explican como hacer un log basico:
+*/
 static void obtenerTimestamp(char *buffer, int tamanio) {
     time_t ahora;
     struct tm *tiempoLocal;
     
-    time(&ahora);
-    tiempoLocal = localtime(&ahora);
+    time(&ahora); // mira el reloj del sistema y guarda el numero en segs
+    tiempoLocal = localtime(&ahora); // convertir a hora local
     
-    strftime(buffer, tamanio, "%H:%M:%S", tiempoLocal);
+    /*strftime funciona parecido a printf pero para horas:
+    * %H = Hora (00-23)
+    * %M = Minuto (00-59)
+    * %S = Segundo (00-59)
+    * El resultado (ej: 
+    */
+    strftime(buffer, tamanio, "%H:%M:%S", tiempoLocal); 
 }
 
-/* ============================================================================
- * IMPLEMENTACION DE FUNCIONES PUBLICAS
- * ============================================================================ */
+// IMPLEMENTACION DE FUNCIONES PUBLICAS 
 
-/*
- * inicializarLogger
- * -----------------
+/* inicializarLogger
  * Abre el archivo de log e inicializa el sistema.
- */
+*/
 int inicializarLogger(const char *nombreArchivo) {
     const char *archivo;
     char timestamp[20];
@@ -98,11 +90,9 @@ int inicializarLogger(const char *nombreArchivo) {
     
     // Escribir cabecera del log
     obtenerTimestamp(timestamp, sizeof(timestamp));
-    fprintf(archivoLog, "================================================================================\n");
     fprintf(archivoLog, " MAQUINA VIRTUAL - LOG DE SISTEMA\n");
     fprintf(archivoLog, " Iniciado: %s\n", timestamp);
     fprintf(archivoLog, " Archivo: %s\n", archivo);
-    fprintf(archivoLog, "================================================================================\n\n");
     fflush(archivoLog);
     
     printf("[LOGGER] Sistema de log inicializado: %s\n", archivo);
@@ -110,11 +100,9 @@ int inicializarLogger(const char *nombreArchivo) {
     return 0;
 }
 
-/*
- * finalizarLogger
- * ---------------
+/* finalizarLogger
  * Cierra el archivo de log.
- */
+*/
 void finalizarLogger() {
     char timestamp[20];
     
@@ -122,11 +110,9 @@ void finalizarLogger() {
         obtenerTimestamp(timestamp, sizeof(timestamp));
         
         // Escribir pie del log
-        fprintf(archivoLog, "\n================================================================================\n");
         fprintf(archivoLog, " FIN DEL LOG\n");
         fprintf(archivoLog, " Finalizado: %s\n", timestamp);
         fprintf(archivoLog, " Total lineas: %d\n", contadorLineasLog);
-        fprintf(archivoLog, "================================================================================\n");
         
         fclose(archivoLog);
         archivoLog = NULL;
@@ -136,23 +122,21 @@ void finalizarLogger() {
     }
 }
 
-/*
- * escribirLog
- * -----------
+/* escribirLog
  * Escribe un mensaje en el log con formato y timestamp.
- */
+*/
 void escribirLog(NivelLog nivel, const char *formato, ...) {
     char timestamp[20];
-    char mensaje[MAX_MENSAJE_LOG];
-    va_list args;
+    char mensaje[MAX_MENSAJE_LOG]; 
+    va_list args; // lista de argumentos variables
     
     // Si el logger no esta activo, solo imprimir en consola
     if (!loggerActivo || archivoLog == NULL) {
         // Para interrupciones, siempre imprimir en stdout
         if (nivel == LOG_INTERRUPCION) {
-            va_start(args, formato);
-            printf("[%s] ", obtenerNombreNivel(nivel));
-            vprintf(formato, args);
+            va_start(args, formato); // inicializa la lista de argumentos variables
+            printf("[%s] ", obtenerNombreNivel(nivel)); 
+            vprintf(formato, args); // printf pero para listas variables
             printf("\n");
             va_end(args);
         }
@@ -163,8 +147,12 @@ void escribirLog(NivelLog nivel, const char *formato, ...) {
     obtenerTimestamp(timestamp, sizeof(timestamp));
     
     // Formatear el mensaje
-    va_start(args, formato);
-    vsnprintf(mensaje, MAX_MENSAJE_LOG, formato, args);
+    va_start(args, formato); // reinicia la lista de argumentos variables
+    /*  vsnprintf es como vsprintf pero para cadenas
+    *  Toma los argumentos variables y los formatea en una cadena, guarda el resultado en mensaje
+    *  MAX_MENSAJE_LOG es el tamanio maximo de la cadena    
+    */
+    vsnprintf(mensaje, MAX_MENSAJE_LOG, formato, args); 
     va_end(args);
     
     // Escribir en archivo de log

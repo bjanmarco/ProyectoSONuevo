@@ -1,11 +1,8 @@
-/*
- * ============================================================================
- * ARCHIVO: dma.c
+/* ARCHIVO: dma.c
  * DESCRIPCION: Implementacion del controlador DMA (Acceso Directo a Memoria).
  *              Ejecuta transferencias disco-memoria en un hilo separado.
  *              Usa el semaforo bloqueoBus para arbitraje con el CPU.
  *              Segun especificaciones de prueba.txt seccion 4.
- * ============================================================================
  */
 
 #include <stdio.h>
@@ -16,9 +13,7 @@
 #include "../include/disco.h"
 #include "../include/memoria.h"
 
-/* ============================================================================
- * DEFINICION DE VARIABLES GLOBALES
- * ============================================================================ */
+/* DEFINICION DE VARIABLES GLOBALES */
 
 // Controlador DMA
 ControladorDma dma;
@@ -27,19 +22,12 @@ ControladorDma dma;
 // Cuando el DMA termina, pone esta bandera a 1 para que el CPU la detecte
 int interrupcionPendienteDma = 0;
 
-/* ============================================================================
- * FUNCION DEL HILO DE TRANSFERENCIA
- * ============================================================================ */
+// FUNCION DEL HILO DE TRANSFERENCIA
 
-/*
- * hiloTransferenciaDma
- * --------------------
- * Funcion que ejecuta el hilo del DMA.
+/* hiloTransferenciaDma
+ * Funcion que es el "punto de entrada" del nuevo hilo paralelo.
  * Realiza la transferencia entre disco y memoria.
- * 
- * Parametros:
- *   arg - No utilizado (requerido por pthread)
- * 
+ * Parametros: arg - No se utiliza pero es necesario para que funcione el pthread
  * Flujo:
  * 1. Lee los parametros del DMA (pista, cilindro, sector, direccion)
  * 2. Lee del disco (sin usar bus) o lee de memoria (usa bus)
@@ -53,7 +41,7 @@ void *hiloTransferenciaDma(void *arg) {
     Palabra palabraTemp;
     int valorEntero;
     
-    // No usamos el argumento
+    // No usamos el argumento poruqe ya tenemos variable globales.
     (void)arg;
     
     printf("[DMA] Hilo iniciado - Transferencia en curso\n");
@@ -64,19 +52,18 @@ void *hiloTransferenciaDma(void *arg) {
            dma.direccionIo,
            dma.direccionMemoria);
     
-    // Simular tiempo de acceso al disco (operacion lenta)
+    // Esto simula que el disco es un dispositivo mecánico 
+    // lento comparado con la CPU.
     usleep(100000);  // 100ms de latencia simulada
     
-    if (dma.direccionIo == 0) {
-        // =========================================================
+    if (dma.direccionIo == 0) { // BLOQUE DE LECTURA    
         // LECTURA: Disco -> Memoria
         // 1. Leer del disco (NO usa bus)
         // 2. Escribir en memoria (SI usa bus)
-        // =========================================================
-        
         printf("[DMA] Operacion: LECTURA (Disco -> Memoria)\n");
         
         // Paso 1: Leer sector del disco (no necesita bus)
+        // No usa el bus del sistema (es una operación interna del dispositivo IO).
         resultado = leerSectorDisco(
             dma.pistaSeleccionada,
             dma.cilindroSeleccionado,
@@ -96,8 +83,12 @@ void *hiloTransferenciaDma(void *arg) {
         // Paso 2: Escribir en memoria (necesita bus)
         // Convertir los 9 caracteres a un entero y guardarlo como Palabra
         // Interpretamos los 9 caracteres como un valor numerico
-        valorEntero = 0;
+        valorEntero = 0; // El disco guarda caracteres ASCII. Aquí se parsean a un número entero.
         for (i = 0; i < TAMANO_SECTOR && bufferSector[i] != '\0'; i++) {
+            /* la funcion escribirMemoria usa el bus. 
+            Aquí es donde el semáforo bloqueoBus (en memoria.c)     
+            protege que no choquemos con la CPU principal.
+            */
             if (bufferSector[i] >= '0' && bufferSector[i] <= '9') {
                 valorEntero = valorEntero * 10 + (bufferSector[i] - '0');
             }
@@ -114,16 +105,14 @@ void *hiloTransferenciaDma(void *arg) {
         
         dma.estado = 0;  // Exito
         
-    } else {
-        // =========================================================
+    } else { // BLOQUE DE ESCRITURA 
         // ESCRITURA: Memoria -> Disco
         // 1. Leer de memoria (SI usa bus)
         // 2. Escribir en disco (NO usa bus)
-        // =========================================================
         
         printf("[DMA] Operacion: ESCRITURA (Memoria -> Disco)\n");
         
-        // Paso 1: Leer de memoria (usa el semaforo automaticamente)
+        // Paso 1: Leer de memoria (usa el semaforo el bus)
         palabraTemp = leerMemoria(dma.direccionMemoria);
         valorEntero = palabraAEntero(palabraTemp);
         
@@ -178,13 +167,9 @@ void *hiloTransferenciaDma(void *arg) {
     return NULL;
 }
 
-/* ============================================================================
- * IMPLEMENTACION DE FUNCIONES PUBLICAS
- * ============================================================================ */
+// IMPLEMENTACION DE FUNCIONES PUBLICAS
 
-/*
- * inicializarDma
- * --------------
+/* inicializarDma
  * Inicializa todos los registros del DMA a valores por defecto.
  */
 void inicializarDma() {
@@ -205,14 +190,12 @@ void inicializarDma() {
     printf("[DMA] Controlador DMA inicializado\n");
 }
 
-/*
- * iniciarTransferenciaDma
- * -----------------------
+/* iniciarTransferenciaDma
  * Inicia una transferencia creando un nuevo hilo.
  */
 void iniciarTransferenciaDma() {
     // Verificar si el DMA ya esta ocupado
-    if (dma.ocupado) {
+    if (dma.ocupado) { // si ya esta trabajando, ignora
         printf("[DMA] ERROR: DMA ocupado, no se puede iniciar transferencia\n");
         return;
     }
@@ -223,6 +206,12 @@ void iniciarTransferenciaDma() {
     printf("[DMA] Iniciando transferencia en hilo separado...\n");
     
     // Crear hilo para la transferencia
+    /*
+    *1er arg: Puntero al ID del hilo.
+    *2do arg: Atributos (NULL por defecto).
+    *3er arg: La función que ejecutará el hilo ( hiloTransferenciaDma).
+    *4to arg: Argumentos para esa función (NULL).
+    */
     if (pthread_create(&dma.hiloId, NULL, hiloTransferenciaDma, NULL) != 0) {
         printf("[DMA] ERROR: No se pudo crear el hilo de transferencia\n");
         dma.estado = 1;  // Error
@@ -233,11 +222,11 @@ void iniciarTransferenciaDma() {
     
     // Desacoplar el hilo para que se libere automaticamente al terminar
     pthread_detach(dma.hiloId);
+    /*cuando este hilo termine, limpia su memoria automáticamente". 
+     * Si no hiciéramos esto, tendríamos un "hilo zombie" (leak de memoria)*/
 }
 
-/*
- * verificarInterrupcionDma
- * ------------------------
+/* verificarInterrupcionDma
  * Verifica si hay una interrupcion pendiente del DMA.
  */
 int verificarInterrupcionDma() {

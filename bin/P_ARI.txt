@@ -1,0 +1,9 @@
+_start 1
+.NumeroPalabras 6
+.NombreProg P_ARI
+04100010
+00100005
+01100003
+02100002
+03100004
+03100000
