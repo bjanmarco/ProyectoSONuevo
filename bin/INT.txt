@@ -1,0 +1,7 @@
+_start 1
+.NumeroPalabras 3
+.NombreProg INT
+
+04109999
+13000000
+04108888

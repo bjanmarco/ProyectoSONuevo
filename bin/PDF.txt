@@ -1,0 +1,9 @@
+_start 1 
+.NumeroPalabras 5 
+.NombreProg 5mas5 
+
+04100005
+00100005
+25000000
+04100007
+04100007

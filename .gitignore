@@ -1,0 +1,17 @@
+# Ignore verification outputs
+verify_output*.txt
+verify_output.txt
+verify_output_2.txt
+verify_output_final.txt
+
+# Ignore logs
+*.log
+debug_output.txt
+test_output.txt
+
+# Ignore backups
+*.bak
+
+# Ignore large files just in case
+*.iso
+*.img
