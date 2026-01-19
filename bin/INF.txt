@@ -2,4 +2,6 @@ _start 1
 .NumeroPalabras 1
 .NombreProg INF
 
+// Instruccion: Jump (Op=27). Salto incondicional a 0. Bucle infinito.
+// Registros: AC=0 MAR=0 MDR=27000000 IR(Op=27,Dir=0,Val=0) RB=300 RL=300 RX=1999 SP=1999 PSW(CC=0,PC=0)
 27000000

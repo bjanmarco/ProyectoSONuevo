@@ -2,6 +2,14 @@ _start 1
 .NumeroPalabras 3
 .NombreProg INT
 
+// Instruccion: Load inmediato (Op=04). Carga 9999.
+// Registros: AC=9999 MAR=0 MDR=04109999 IR(Op=04,Dir=1,Val=9999) RB=300 RL=302 RX=1999 SP=1999 PSW(CC=2,PC=1)
 04109999
+
+// Instruccion: SVC (Op=13). Genera interrupcion.
+// Registros: AC=9999 MAR=1 MDR=13000000 IR(Op=13,Dir=0,Val=0) RB=300 RL=302 RX=1999 SP=1999 PSW(CC=2,PC=2)
 13000000
+
+// Instruccion: Load inmediato (Op=04). Carga 8888.
+// Registros: AC=8888 MAR=2 MDR=04108888 IR(Op=04,Dir=1,Val=8888) RB=300 RL=302 RX=1999 SP=1999 PSW(CC=2,PC=3)
 04108888

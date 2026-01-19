@@ -1,11 +1,31 @@
-_start 1 
-.NumeroPalabras 7 
-.NombreProg 5mas5 
+_start 1
+.NumeroPalabras 7
+.NombreProg 5mas5
 
+// Instruccion: Load inmediato (Op=04). Carga 5.
+// Registros: AC=5 MAR=0 MDR=04100005 IR(Op=04,Dir=1,Val=5) RB=300 RL=306 RX=1999 SP=1999 PSW(CC=2,PC=1)
 04100005
+
+// Instruccion: Add inmediato (Op=00). Suma 5. AC=10.
+// Registros: AC=10 MAR=1 MDR=00100005 IR(Op=00,Dir=1,Val=5) RB=300 RL=306 RX=1999 SP=1999 PSW(CC=2,PC=2)
 00100005
+
+// Instruccion: Push (Op=25). Apila 10.
+// Registros: AC=10 MAR=2 MDR=25000000 IR(Op=25,Dir=0,Val=0) RB=300 RL=306 RX=1999 SP=1998 PSW(CC=2,PC=3)
 25000000
+
+// Instruccion: Load inmediato (Op=04). Carga 7.
+// Registros: AC=7 MAR=3 MDR=04100007 IR(Op=04,Dir=1,Val=7) RB=300 RL=306 RX=1999 SP=1998 PSW(CC=2,PC=4)
 04100007
+
+// Instruccion: SVC (Op=13).
+// Registros: AC=7 MAR=4 MDR=13000000 IR(Op=13,Dir=0,Val=0) RB=300 RL=306 RX=1999 SP=1998 PSW(CC=2,PC=5)
 13000000
+
+// Instruccion: Load inmediato (Op=04). Carga 7.
+// Registros: AC=7 MAR=5 MDR=04100007 IR(Op=04,Dir=1,Val=7) RB=300 RL=306 RX=1999 SP=1998 PSW(CC=2,PC=6)
 04100007
+
+// Instruccion: SVC (Op=13).
+// Registros: AC=7 MAR=6 MDR=13000000 IR(Op=13,Dir=0,Val=0) RB=300 RL=306 RX=1999 SP=1998 PSW(CC=2,PC=7)
 13000000

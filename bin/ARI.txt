@@ -1,0 +1,34 @@
+_start 1
+.NumeroPalabras 6
+.NombreProg ARI
+
+// Instruccion: Load inmediato (Op=04). Carga el valor 10 al Acumulador.
+// Registros despues: AC=10 MAR=0 MDR=04100010 IR(Op=04,Dir=1,Val=10) 
+// RB=300 RL=305 RX=1999 SP=1999 PSW(CC=0,Modo=0,Int=1,PC=1)
+04100010
+
+// Instruccion: Suma inmediata (Op=00). Suma 5 al Acumulador.
+// Registros despues: AC=15 MAR=1 MDR=00100005 IR(Op=00,Dir=1,Val=5) 
+// RB=300 RL=305 RX=1999 SP=1999 PSW(CC=2,Modo=0,Int=1,PC=2)
+00100005
+
+// Instruccion: Resta inmediata (Op=01). Resta 3 al Acumulador.
+// Registros despues: AC=12 MAR=2 MDR=01100003 IR(Op=01,Dir=1,Val=3) 
+// RB=300 RL=305 RX=1999 SP=1999 PSW(CC=2,Modo=0,Int=1,PC=3)
+01100003
+
+// Instruccion: Multiplicacion inmediata (Op=02). Multiplica el Acumulador por 2.
+// Registros despues: AC=24 MAR=3 MDR=02100002 IR(Op=02,Dir=1,Val=2) 
+// RB=300 RL=305 RX=1999 SP=1999 PSW(CC=2,Modo=0,Int=1,PC=4)
+02100002
+
+// Instruccion: Division inmediata (Op=03). Divide el Acumulador entre 4.
+// Registros despues: AC=6 MAR=4 MDR=03100004 IR(Op=03,Dir=1,Val=4) 
+//RB=300 RL=305 RX=1999 SP=1999 PSW(CC=2,Modo=0,Int=1,PC=5)
+03100004
+
+// Instruccion: Division inmediata (Op=03). Intento de division por 0.
+// Genera Interrupcion de Overflow (INT_OVERFLOW).
+// Registros despues: AC=6 MAR=5 MDR=03100000 IR(Op=03,Dir=1,Val=0) 
+// RB=300 RL=305 RX=1999 SP=1999 PSW(CC=2,Modo=0,Int=1,PC=6)
+03100000

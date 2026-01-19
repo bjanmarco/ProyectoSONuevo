@@ -1,9 +1,27 @@
 _start 1
 .NumeroPalabras 6
 .NombreProg LOP
+
+// Instruccion: Load inmediato (Op=04). Carga 0.
+// Registros: AC=0 MAR=0 MDR=04100000 IR(Op=04,Dir=1,Val=0) RB=300 RL=305 RX=1999 SP=1999 PSW(CC=0,PC=1)
 04100000
+
+// Instruccion: Push (Op=25). Apila 0.
+// Registros: AC=0 MAR=1 MDR=25000000 IR(Op=25,Dir=0,Val=0) RB=300 RL=305 RX=1999 SP=1998 PSW(CC=0,PC=2)
 25000000
+
+// Instruccion: Load inmediato (Op=04). Carga 5.
+// Registros: AC=5 MAR=2 MDR=04100005 IR(Op=04,Dir=1,Val=5) RB=300 RL=305 RX=1999 SP=1998 PSW(CC=2,PC=3)
 04100005
+
+// Instruccion: Sub inmediato (Op=01). Resta 1 (Loop start).
+// Registros: AC=4 MAR=3 MDR=01100001 IR(Op=01,Dir=1,Val=1) RB=300 RL=305 RX=1999 SP=1998 PSW(CC=2,PC=4)
 01100001
+
+// Instruccion: Jump If Greater Than (Op=12). Salta a 3 si AC > M[SP](0).
+// Registros: AC=4 MAR=4 MDR=12000003 IR(Op=12,Dir=0,Val=3) RB=300 RL=305 RX=1999 SP=1998 PSW(CC=2,PC=3 en salto)
 12000003
+
+// Instruccion: Pop (Op=26). Restaura AC desde pila (si el bucle termina).
+// Registros: AC=0 MAR=5 MDR=26000000 IR(Op=26,Dir=0,Val=0) RB=300 RL=305 RX=1999 SP=1999 PSW(CC=0,PC=6)
 26000000

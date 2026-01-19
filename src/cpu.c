@@ -77,7 +77,7 @@ void imprimirLog(const char *mensaje) {
     logCpu("[Ciclo %d] %s", contadorCiclos, mensaje);
 }
 
-// Imprime mensaje en log Y consola (para errores e info critica)
+// Imprime mensaje en log Y consola 
 void imprimirLogCritico(const char *mensaje) {
     char buffer[512];
     sprintf(buffer, "[CPU][Ciclo %d] %s", contadorCiclos, mensaje);
@@ -411,9 +411,7 @@ int cicloCpu() {
     return faseExecute();
 }
 
-/*
- * Fase FETCH: Busca la instruccion de memoria.
- */
+//Fase FETCH: Busca la instruccion de memoria.
 void faseFetch() {
     int direccionFisica;
     

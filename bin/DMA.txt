@@ -2,14 +2,46 @@ _start 1
 .NumeroPalabras 11
 .NombreProg DMA
 
+// Instruccion: Load inmediato (Op=04). Carga valor 42.
+// Registros: AC=42 MAR=0 MDR=04100042 IR(Op=04,Dir=1,Val=42) RB=300 RL=310 RX=1999 SP=1999 PSW(CC=2,PC=1)
 04100042
+
+// Instruccion: Store directo (Op=05). Guarda AC(42) en M[10] (Dir Fis: 310).
+// Registros: AC=42 MAR=1 MDR=05000010 IR(Op=05,Dir=0,Val=10) RB=300 RL=310 RX=1999 SP=1999 PSW(CC=2,PC=2)
 05000010
+
+// Instruccion: SDMAP (Op=28). Configura DMA Pista=0.
+// Registros: AC=42 MAR=2 MDR=28000000 IR(Op=28,Dir=0,Val=0) RB=300 RL=310 RX=1999 SP=1999 PSW(CC=2,PC=3)
 28000000
+
+// Instruccion: SDMAC (Op=29). Configura DMA Cilindro=0.
+// Registros: AC=42 MAR=3 MDR=29000000 IR(Op=29,Dir=0,Val=0) RB=300 RL=310 RX=1999 SP=1999 PSW(CC=2,PC=4)
 29000000
+
+// Instruccion: SDMAS (Op=30). Configura DMA Sector=0.
+// Registros: AC=42 MAR=4 MDR=30000000 IR(Op=30,Dir=0,Val=0) RB=300 RL=310 RX=1999 SP=1999 PSW(CC=2,PC=5)
 30000000
+
+// Instruccion: SDMAIO (Op=31). Configura DMA IO=1 (Escribir al disco).
+// Registros: AC=42 MAR=5 MDR=31100001 IR(Op=31,Dir=1,Val=1) RB=300 RL=310 RX=1999 SP=1999 PSW(CC=2,PC=6)
 31100001
+
+// Instruccion: SDMAM (Op=32). Memoria DMA=10 (Donde esta el 42).
+// Registros: AC=42 MAR=6 MDR=32000010 IR(Op=32,Dir=0,Val=10) RB=300 RL=310 RX=1999 SP=1999 PSW(CC=2,PC=7)
 32000010
+
+// Instruccion: SDMAON (Op=33). Inicia DMA.
+// Registros: AC=42 MAR=7 MDR=33000000 IR(Op=33,Dir=0,Val=0) RB=300 RL=310 RX=1999 SP=1999 PSW(CC=2,PC=8)
 33000000
+
+// Instruccion: Load inmediato (Op=04). Carga valor 1.
+// Registros: AC=1 MAR=8 MDR=04100001 IR(Op=04,Dir=1,Val=1) RB=300 RL=310 RX=1999 SP=1999 PSW(CC=2,PC=9)
 04100001
+
+// Instruccion: Push (Op=25). Guarda AC(1) en Pila. SP--.
+// Registros: AC=1 MAR=9 MDR=25000000 IR(Op=25,Dir=0,Val=0) RB=300 RL=310 RX=1999 SP=1998 PSW(CC=2,PC=10)
 25000000
+
+// Instruccion: SVC (Op=13). Llamada al sistema (Fin/Int).
+// Registros: AC=1 MAR=10 MDR=13000000 IR(Op=13,Dir=0,Val=0) RB=300 RL=310 RX=1999 SP=1998 PSW(CC=2,PC=11)
 13000000

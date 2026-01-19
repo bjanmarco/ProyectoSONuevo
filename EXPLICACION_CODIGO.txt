@@ -1,0 +1,84 @@
+# Análisis Detallado del Código - Proyecto Sistema Operativo
+## Roles y Responsabilidad: Profesor / Analista Técnico
+
+Este documento desglosa la implementación de la arquitectura virtual solicitada, evidenciando cómo se cumplieron los requerimientos mediante referencias directas a las estructuras y lógica del código fuente.
+
+---
+
+### 1. Implementación de la Memoria
+**Estructura:**
+La memoria se representa como un arreglo global de estructuras `Palabra` en `src/memoria.c`.
+- **Código:** `Palabra memoriaPrincipal[TAMANO_MEMORIA];` (Línea 17, `src/memoria.c`).
+- **Definición:** `TAMANO_MEMORIA` es 2000 y `Palabra` es una estructura con signo y dígitos (Líneas 16-23, `include/hardware.h`).
+
+**Lógica y Arbitraje:**
+Se utiliza un semáforo POSIX (`sem_t bloqueoBus`) para simular el bus compartido y evitar condiciones de carrera entre la CPU y el DMA.
+- **Acceso:** Las funciones `leerMemoria` y `escribirMemoria` solicitan el semáforo (`sem_wait`) antes de acceder y lo liberan (`sem_post`) después (Líneas 67-114, `src/memoria.c`).
+- **Distribución:** Las primeras 300 posiciones se reservan para el SO (`TAMANO_MEMORIA_SO` en `include/hardware.h`), aunque en esta fase solo se verifica mediante lógica en el Loader y CPU.
+
+### 2. Ciclo de Instrucción (Fetch-Decode-Execute)
+Implementado fielmente en `src/cpu.c` dentro de la función `cicloCpu` y sus auxiliares.
+
+**Límites y Estructuras:**
+- **Fetch:** `faseFetch()` (Línea 417).
+    - Carga `MAR` con el `PC`.
+    - Obtiene la instrucción de memoria a `MDR`.
+    - Incrementa `PC`.
+- **Decode:** `faseDecode()` (Línea 441).
+    - Descompone `MDR` (instrucción cruda) en campos de `IR`: Opcode (2 dígitos), Modo (1), Valor (5).
+- **Execute:** `faseExecute()` (Línea 454).
+    - Evalúa `IR.codigoOperacion` en un `switch` gigante para realizar la operación correspondiente.
+
+### 3. Implementación de Interrupciones
+Las interrupciones se manejan mediante banderas globales verificadas al final de cada ciclo de instrucción.
+
+**Mecanismo:**
+- **Detección:** Variables `interrupcionPendiente` y `codigoInterrupcionPendiente` en `src/cpu.c`.
+- **Verificación:** En `ejecutarCpu()` (Línea 327, `src/cpu.c`), si hay interrupción pendiente y están habilitadas (`PSW.int=1`), se llama a `manejarInterrupcion`.
+- **Vector:** Definido como constantes `INT_*` en `include/hardware.h` (Líneas 150-158).
+
+### 4. Controlador DMA (Acceso Directo a Memoria)
+Implementado en `src/dma.c` simulando hardware independiente mediante hilos (`pthreads`).
+
+**Funcionamiento:**
+- **Inicio:** `iniciarTransferenciaDma()` (Línea 196) verifica si está ocupado y lanza un hilo `hiloTransferenciaDma`.
+- **Transferencia:** El hilo lee/escribe en Disco (sin bus) y luego escribe/lee en Memoria (usando `escribirMemoria`/`leerMemoria` que protegen el bus).
+- **Notificación:** Al finalizar, el hilo actualiza `dma.estado`, libera `dma.ocupado` y levanta la bandera `interrupcionPendienteDma = 1` (Línea 161), simulando una interrupción hardware.
+
+### 5. Simulador de Disco
+El disco es puramente volátil (RAM) simulando persistencia magnética.
+- **Estructura:** Array tridimensional `DiscoDuro` en `src/disco.c` (Línea 16).
+    - `sectores[DISCO_CILINDROS][DISCO_PISTAS][DISCO_SECTORES]`.
+- **Acceso:** Funciones `leerSectorDisco` y `escribirSectorDisco` copian bytes directamente. No compiten por el bus de memoria sistema, cumpliendo el requerimiento de independencia I/O.
+
+### 6. Consola y Modos de Ejecución
+La interfaz de usuario reside en `src/main.c`.
+- **Bucle Principal:** Un `while` lee comandos (`cargar`, `run`, `debug`).
+- **Estados:** `modoDebug` controla si `ejecutarCpu` corre continuo o si el control se gestiona paso a paso en `ejecutarModoDebug` (Línea 349).
+
+### 7. Lógica General y Carga (Loader)
+- **Carga:** En `src/loader.c`, se leen archivos de texto, validan instrucciones numéricas y se cargan secuencialmente en memoria a partir de `siguienteDireccionDisponible` o `INICIO_MEMORIA_USUARIO` (300).
+- **Ejecución Uno a Uno:** La CPU ejecuta secuencialmente según el `PC` hasta encontrar un error, una interrupción no manejada, o instrucciones de salto que modifiquen el flujo.
+
+### 8. Registros Base (RB) y Límite (RL)
+Implementan el esquema básico de protección de memoria para multiprogramación (particionamiento variable).
+- **Definición:** `registrosCpu.rb` y `registrosCpu.rl`.
+- **Carga:** El Loader calcula y seteá `direccionBase` (inicio) y `direccionLimite` (fin) del programa cargado (Líneas 248-249, `src/loader.c`).
+- **Protección:** `verificarProteccionMemoria()` en `src/cpu.c` (Línea 132) asegura que cualquier acceso en modo Usuario esté dentro de `[RB, RL]`.
+
+### 9. Pila (Stack)
+Simulada al final de la memoria principal.
+- **Implementación:** Registro `SP` (Stack Pointer).
+- **Inicialización:** `SP` y `RX` (base de pila) inician en `TAMANO_MEMORIA - 1` (1999) y la pila crece hacia abajo (direcciones menores).
+- **Uso:** Instrucciones `PSH` (decrementa SP, escribe) y `POP` (lee, incrementa SP). Esencial para manejo de subrutinas y preservación de contexto.
+
+### 10. Incorporación de Interrupciones
+Se incorporaron para manejar eventos asíncronos (como I/O de disco y Timer) y síncronos (errores de ejecución `Overflow`, `DivByZero`) sin detener fatalmente el procesador inmediatamente, permitiendo al "SO" (simulado por el manejaInterrupcion) tomar control.
+- **Justificación:** Permite la multiprogramación y la respuesta a dispositivos lentos sin desperdiciar ciclos de CPU (aunque en esta fase mono-proceso detiene la ejecución, sienta las bases para el Kernel).
+
+### 11. Modo Kernel vs Usuario
+Controlado por el bit `modoOperacion` en el PSW.
+- **Implementación:** Constantes `MODO_USUARIO` (0) y `MODO_KERNEL` (1).
+- **Efecto:**
+    1.  **Protección:** En modo Kernel (`verificarProteccionMemoria` retorna true siempre), se accede a toda la memoria. En Usuario, se restringe a `RB-RL`.
+    2.  **Privilegios:** Instrucciones críticas (I/O, modificación de registros base/timer) verifican `esInstruccionPrivilegiada()` (Línea 148, `src/cpu.c`). Si un usuario intenta ejecutarlas, se genera interrupción de "Instrucción Inválida".
