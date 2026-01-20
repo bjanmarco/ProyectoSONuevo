@@ -14,6 +14,7 @@
 #include "../include/memoria.h"
 #include "../include/disco.h"
 #include "../include/dma.h"
+#include "../include/logger.h"
 
 // Bandera que indica si el CPU esta ejecutando
 int cpuEjecutando = 0;
@@ -76,8 +77,11 @@ Palabra enteroAPalabra(int val) {
     return p;
 }
 
+// Muestra mensajes en el log (y consola si es critico/debug)
 void imprimirLog(const char *mensaje) {
-    printf("[CPU][Ciclo %d] %s\n", contadorCiclos, mensaje);
+    // Usamos logCpu para que vaya al archivo .log
+    // Se incluye el ciclo actual para contexto
+    logCpu("[Ciclo %d] %s", contadorCiclos, mensaje);
 }
 
 void imprimirEstadoCpu() {
@@ -320,8 +324,8 @@ void ejecutarCpu() {
     }
     
     // Mostrar estado final
-    imprimirLog("CPU detenido");
-    imprimirEstadoCpu();
+    imprimirLog("Devolviendo control a la consola");
+    // imprimirEstadoCpu(); // Deshabilitado: Usuario no desea ver registros al finalizar run
 }
 
 int cicloCpu() {
@@ -345,7 +349,7 @@ int cicloCpu() {
     int direccionFisicaPC = traducirDireccion(registrosCpu.psw.pc);
     // Si PC > RL -> fin del programa (RL es inclusivo)
     if (direccionFisicaPC > registrosCpu.rl) {
-        imprimirLog("Fin del programa: PC > RL (RL inclusivo)");
+        imprimirLog("Detectada ultima instruccion, fin de programa");
         cpuEjecutando = 0;
         return 0;
     }
@@ -752,12 +756,13 @@ void restaurarContexto() {
  * Maneja una interrupcion. Retorna 1 si es recuperable, 0 si es fatal.
  */
 int manejarInterrupcion(int codigoInterrupcion) {
-    char buffer[100];
+
     int esRecuperable = 0;
     
-    sprintf(buffer, "=== INTERRUPCION %d ===", codigoInterrupcion);
-    imprimirLog(buffer);
-    printf("[INTERRUPCION] Codigo: %d\n", codigoInterrupcion);
+    // Modificado para usar sistema de logs
+    // sprintf(buffer, "=== INTERRUPCION %d ===", codigoInterrupcion);
+    // imprimirLog(buffer);
+    // printf("[INTERRUPCION] Codigo: %d\n", codigoInterrupcion);
     
     // 1. Guardar contexto
     guardarContexto();
@@ -769,64 +774,78 @@ int manejarInterrupcion(int codigoInterrupcion) {
     registrosCpu.psw.habilitarInterrupciones = INT_DESHABILITADAS;
     
     // 4. Determinar si es recuperable y ejecutar manejador
+    const char *desc = "Desconocida";
+    
+    // 4. Determinar si es recuperable y obtener descripcion
     switch (codigoInterrupcion) {
-        case INT_SYSCALL_INVALIDA:  // 0: Syscall invalida - FATAL
-            imprimirLog("ERROR FATAL: Syscall invalida");
+        case INT_SYSCALL_INVALIDA:  // 0
+            desc = "Syscall invalida";
             esRecuperable = 0;
             break;
             
-        case INT_CODIGO_INVALIDO:  // 1: Codigo invalido - FATAL
-            imprimirLog("ERROR FATAL: Codigo de interrupcion invalido");
+        case INT_CODIGO_INVALIDO:  // 1
+            desc = "Codigo de interrupcion invalido";
             esRecuperable = 0;
             break;
             
-        case INT_SVC:  // 2: Llamada al sistema - RECUPERABLE
-            imprimirLog("Manejando syscall...");
+        case INT_SVC:  // 2
+            desc = "Llamada al sistema (SVC)";
             esRecuperable = 1;
             break;
             
-        case INT_TIMER:  // 3: Timer - RECUPERABLE
-            imprimirLog("Interrupcion de reloj");
+        case INT_TIMER:  // 3
+            desc = "Temporizador (Clock)";
             esRecuperable = 1;
             break;
             
-        case INT_IO_DONE:  // 4: Fin de E/S - RECUPERABLE
-            imprimirLog("Operacion de E/S completada");
+        case INT_IO_DONE:  // 4
+            desc = "Operacion E/S completada";
             esRecuperable = 1;
             break;
             
-        case INT_INSTRUCCION_INVALIDA:  // 5: Instruccion invalida - FATAL
-            imprimirLog("ERROR FATAL: Instruccion invalida o privilegiada");
+        case INT_INSTRUCCION_INVALIDA:  // 5
+            desc = "Instruccion invalida o privilegiada";
             esRecuperable = 0;
             break;
             
-        case INT_DIRECCION_INVALIDA:  // 6: Direccionamiento invalido - FATAL
-            imprimirLog("ERROR FATAL: Violacion de proteccion de memoria");
+        case INT_DIRECCION_INVALIDA: // 6
+            desc = "Direccionamiento invalido (Violacion de Memoria)";
             esRecuperable = 0;
             break;
-            
-        case INT_UNDERFLOW:  // 7: Underflow - FATAL
-            imprimirLog("ERROR FATAL: Stack underflow");
+
+        case INT_UNDERFLOW: // 7
+            desc = "Stack Underflow";
             esRecuperable = 0;
             break;
-            
-        case INT_OVERFLOW:  // 8: Overflow - FATAL
-            imprimirLog("ERROR FATAL: Overflow aritmetico");
+
+        case INT_OVERFLOW: // 8
+            desc = "Overflow Aritmetico";
             esRecuperable = 0;
             break;
-            
-        default:
-            sprintf(buffer, "ERROR: Codigo de interrupcion desconocido: %d", codigoInterrupcion);
-            imprimirLog(buffer);
-            esRecuperable = 0;
     }
+
+    // Mensaje unificado y claro tanto para consola como log
+    // logInterrupcion se imprime en ambos destinos
+    char tipoInt[20];
+    if (esRecuperable) strcpy(tipoInt, "RECUPERABLE");
+    else strcpy(tipoInt, "FATAL");
+
+    logInterrupcion("Ciclo %d | Int %d (%s): %s", contadorCiclos, codigoInterrupcion, tipoInt, desc);
+
+    if (!esRecuperable) {
+        logCpu("Deteniendo ejecucion debido a interrupcion fatal: %s", desc);
+    } else {
+        logCpu("Manejando interrupcion recuperable: %s", desc);
+    }
+            
+    // (Bloque de casos antiguos eliminado)
     
     // 5. Si es recuperable, restaurar contexto y volver a modo usuario
     if (esRecuperable) {
         restaurarContexto();
         imprimirLog("Retornando de interrupcion");
     } else {
-        imprimirLog("Interrupcion fatal - Terminando programa");
+        imprimirLog("Deteniendo ejecucion - Terminando programa");
         cpuEjecutando = 0;
     }
     
@@ -835,10 +854,3 @@ int manejarInterrupcion(int codigoInterrupcion) {
     return esRecuperable;
 }
 
-int verificarInterrupcionesPendientes() {
-
-    if (interrupcionPendiente) {
-        return codigoInterrupcionPendiente;
-    }
-    return -1;
-}

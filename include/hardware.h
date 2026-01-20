@@ -1,6 +1,6 @@
 // ARCHIVO: hardware.h
-// DESCRIPCION: Definiciones de hardware para la maquina virtual.
-//              Contiene constantes, estructuras y prototipos de funciones.
+// Aca definimos los ladrillos basicos de la maquina virtual. 
+// Structures, constantes y todo lo que comparten los componentes.
 
 #ifndef HARDWARE_H
 #define HARDWARE_H
@@ -9,215 +9,209 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-// CONSTANTES DE ARQUITECTURA
+// --- Definiciones de Arquitectura ---
 
-// Estructura de Palabra (8 digitos decimales totales)
-// Formato: [Signo (1 digito)] [Magnitud (7 digitos)]
-// Signo: 0 = Positivo (+), 1 = Negativo (-)
+// Usamos una estructura para la Palabra porque necesitamos separar signo y magnitud.
+// Con un int normal seria un lio manejar el formato decimal de 8 digitos que pidieron.
+// Asi controlo facil si es positivo/negativo sin pelearme con bits complementarios.
 typedef struct {
-    int signo;      // Primer digito: 0 = positivo, 1 = negativo
-    int digitos;    // 7 digitos restantes (magnitud del valor)
+    int signo;      // 0 es +, 1 es - (facil para imprimir)
+    int digitos;    // Aqui guardamos el valor absoluto (ej: 9999999)
 } Palabra;
 
-// Registro PSW (Palabra de Estado del Programa)
-// Estructura: [CC (1d)] [Modo (1d)] [Int (1d)] [PC (5d)]
+// El PSW (Processor Status Word) lo empaquetamos en un struct para no tener
+// variables sueltas. Es mas facil pasarlo todo junto al guardar contexto.
 typedef struct {
-    int codigoCondicion;        // CC: 0(=), 1(<), 2(>), 3(Desbordamiento)
-    int modoOperacion;          // Modo: 0=Usuario, 1=Kernel
-    int habilitarInterrupciones;// Int: 0=Deshabilitadas, 1=Habilitadas
-    int pc;                     // PC: Direccion siguiente instruccion (5 digitos)
+    int codigoCondicion;        // Para saber el resultado de la ultima comparacion (<, >, =)
+    int modoOperacion;          // Vital: Usuario (0) vs Kernel (1). Seguridad ante todo.
+    int habilitarInterrupciones;// Si vale 0, el CPU ignora todo hasta terminar lo critico.
+    int pc;                     // El famoso Program Counter.
 } Psw;
 
-// Formato de Instruccion (8 digitos)
-// Estructura: [Codigo Operacion (2d)] [Direccionamiento (1d)] [Valor (5d)]
-// Segun enunciado seccion 3: Formato de Instruccion
+// El registro de instrucciones (IR) tambien va separado para decodificar facil
+// el opcode del modo de direccionamiento. Si fuera un solo int, tendria que hacer
+// divisiones y modulos cada vez que quiero saber el opcode.
 typedef struct {
-    int codigoOperacion;    // 2 digitos: codigo de la operacion
-    int direccionamiento;   // 1 digito: 0=Directo, 1=Inmediato, 2=Indexado
-    int valor;              // 5 digitos: direccion o valor
+    int codigoOperacion;    
+    int direccionamiento;   
+    int valor;              
 } RegistroIr;
 
-// Registros del Procesador
-
+// Agrupamos TODOS los registros en una struct para simular el hardware real.
+// Ademas, nos ayuda un monton cuando hay que hacer context switch: copias esta
+// struct entera y listo, estado guardado.
 typedef struct {
-    Palabra ac;     // Registro Acumulador (para operaciones aritmeticas)
-    Palabra mar;    // Memory Address Register (direccion a buscar)
-    Palabra mdr;    // Memory Data Register (dato donde apunta MAR)
-    RegistroIr ir;  // Instruction Register (instruccion actual)
-    int rb;         // Registro Base (proteccion de memoria)
-    int rl;         // Registro Limite (proteccion de memoria)
-    int rx;         // Registro base de la pila
-    int sp;         // Stack Pointer (puntero al tope de pila)
-    Psw psw;        // Palabra de Estado del Sistema
+    Palabra ac;     // Acumulador: el caballo de batalla, todo pasa por aqui.
+    Palabra mar;    // MAR: "Quiero acceder a ESTA direccion"
+    Palabra mdr;    // MDR: "Este es el dato que lei/escribire"
+    RegistroIr ir;  
+    int rb;         // Base: Donde empieza el programa. Proteccion basica.
+    int rl;         // Limite: Cuanto mide. Si te pasas -> Sejmet (Violacion de Segmento simulada)
+    int rx;         // Para recorrer arrays sin volverse loco con aritmetica de punteros
+    int sp;         
+    Psw psw;        
 } Registros;
 
 
-// CONSTANTES DE MEMORIA RAM
-// - Arreglo de 2000 posiciones
-// - Primeras 300 reservadas para el Sistema Operativo
-#define TAMANO_MEMORIA          2000    // Capacidad total: 2000 palabras
-#define TAMANO_MEMORIA_SO       300     // 0000 - 0299: Area del Sistema Operativo
-#define INICIO_MEMORIA_USUARIO  300     // 0300 - 1999: Espacio de Usuario
+// --- Constantes del Sistema ---
 
-// MODOS DE EJECUCION
-#define MODO_USUARIO            0       // Modo usuario (sin privilegios)
-#define MODO_KERNEL             1       // Modo kernel/privilegiado
+// 2000 palabras parece poco, pero para simular basta.
+// Las primeras 300 son "terra incognita" para el usuario (reservadas SO).
+#define TAMANO_MEMORIA          2000    
+#define TAMANO_MEMORIA_SO       300     
+#define INICIO_MEMORIA_USUARIO  300     
 
-// CODIGOS DE CONDICION (CC)
-#define CC_CERO                 0       // Igual a cero (X == Y)
-#define CC_NEGATIVO             1       // Menor que cero (X < Y)
-#define CC_POSITIVO             2       // Mayor que cero (X > Y)
-#define CC_DESBORDAMIENTO       3       // Overflow ocurrido
+// Modos de operacion: Flags simples para los ifs de seguridad en memoria.c
+#define MODO_USUARIO            0       
+#define MODO_KERNEL             1       
 
-// ESTADO DE INTERRUPCIONES
-#define INT_DESHABILITADAS      0       // Interrupciones deshabilitadas
-#define INT_HABILITADAS         1       // Interrupciones habilitadas
+// Resultados de comparaciones (AC vs M[x])
+// Uso defines en lugar de nums magicos para que el codigo en cpu.c se lea solo.
+#define CC_CERO                 0       
+#define CC_NEGATIVO             1       
+#define CC_POSITIVO             2       
+#define CC_DESBORDAMIENTO       3       
 
-// MODOS DE DIRECCIONAMIENTO
-#define DIR_DIRECTO             0       // Los 5 ultimos digitos referencian memoria
-#define DIR_INMEDIATO           1       // Los 5 ultimos digitos son el dato
-#define DIR_INDEXADO            2       // Los 5 digitos son indice desde AC
+// Estados de interrupcion
+#define INT_DESHABILITADAS      0       
+#define INT_HABILITADAS         1       
 
-// CODIGOS DE OPERACION (Set de Instrucciones)
+// Modos de direccionamiento
+// 0: La direccion es donde esta el dato
+// 1: La direccion ES el dato (constante)
+// 2: La direccion base + indice RX (ideal para arrays)
+#define DIR_DIRECTO             0       
+#define DIR_INMEDIATO           1       
+#define DIR_INDEXADO            2       
 
-// Grupo 1: Instrucciones Aritmeticas (Operan sobre AC)
-#define OP_SUM                  0       // Suma: AC = AC + dato
-#define OP_RES                  1       // Resta: AC = AC - dato
-#define OP_MULT                 2       // Multiplicacion: AC = AC * dato
-#define OP_DIVI                 3       // Division: AC = AC / dato
+// --- Set de Instrucciones (OpCodes) ---
+// Estan agrupados por funcionalidad. Uso nombres cortos tipo ensamblador.
 
-// Grupo 2: Transferencia de Datos entre AC y Memoria
-#define OP_LOAD                 4       // Carga: AC = M[direccion]
-#define OP_STR                  5       // Almacena: M[direccion] = AC
+// Aritmetica basica (todo contra el Acumulador)
+#define OP_SUM                  0       
+#define OP_RES                  1       
+#define OP_MULT                 2       
+#define OP_DIVI                 3       
 
-// Grupo 3: Transferencia entre AC y Registros Especiales
-#define OP_LOADRX               6       // Carga RX en AC
-#define OP_STRRX                7       // Almacena AC en RX
+// Mover datos (RAM <-> AC)
+#define OP_LOAD                 4       
+#define OP_STR                  5       
 
-// Grupo 4: Comparacion y Saltos Condicionales
-#define OP_COMP                 8       // Compara dato con AC
-#define OP_JMPE                 9       // Salta si igual (AC == M[SP])
-#define OP_JMPNE                10      // Salta si no igual (AC != M[SP])
-#define OP_JMPLT                11      // Salta si menor que (AC < M[SP])
-#define OP_JMPLGT               12      // Salta si mayor que (AC > M[SP])
+// Registros especiales (para no perder el valor de RX)
+#define OP_LOADRX               6       
+#define OP_STRRX                7       
 
-// Grupo 5: Control del Sistema y Llamadas
-#define OP_SVC                  13      // Llamada al sistema (syscall)
-#define OP_RETRN                14      // Retorno de subrutina
-#define OP_HAB                  15      // Habilita interrupciones
-#define OP_DHAB                 16      // Deshabilita interrupciones
-#define OP_TTI                  17      // Establece tiempo del reloj
-#define OP_CHMOD                18      // Cambia modo de ejecucion
+// Saltos condicionales
+// "Si lo ultimo que compare dio X, salta a Y"
+#define OP_COMP                 8       
+#define OP_JMPE                 9       // Jump Equal
+#define OP_JMPNE                10      // Jump Not Equal
+#define OP_JMPLT                11      // Jump Less Than
+#define OP_JMPLGT               12      // Jump Greater Than (typo mio? deberia ser GT)
 
-// Grupo 6: Gestion de Registros Base, Limite y Pila
-#define OP_LOADRB               19      // Carga RB en AC
-#define OP_STRRB                20      // Almacena AC en RB
-#define OP_LOADRL               21      // Carga RL en AC
-#define OP_STRRL                22      // Almacena AC en RL
-#define OP_LOADSP               23      // Carga SP en AC
-#define OP_STRSP                24      // Almacena AC en SP
+// Control de flujo y sistema
+#define OP_SVC                  13      // El usuario pide ayuda al SO
+#define OP_RETRN                14      
+#define OP_HAB                  15      
+#define OP_DHAB                 16      
+#define OP_TTI                  17      
+#define OP_CHMOD                18      
 
-// Grupo 7: Operaciones de Pila
-#define OP_PSH                  25      // Apilar: SP--, M[SP] = AC
-#define OP_POP                  26      // Desapilar: AC = M[SP], SP++
+// Gestion de registros protegidos (Solo Kernel deberia tocar esto)
+#define OP_LOADRB               19      
+#define OP_STRRB                20      
+#define OP_LOADRL               21      
+#define OP_STRRL                22      
+#define OP_LOADSP               23      
+#define OP_STRSP                24      
 
-// Grupo 8: Salto Incondicional
-#define OP_J                    27      // Salto incondicional: PC = direccion
+// Pila (Stack)
+#define OP_PSH                  25      
+#define OP_POP                  26      
 
-// Grupo 9: Instrucciones de E/S (Comunicacion con DMA)
-#define OP_SDMAP                28      // Establece pista del DMA
-#define OP_SDMAC                29      // Establece cilindro del DMA
-#define OP_SDMAS                30      // Establece sector del DMA
-#define OP_SDMAIO               31      // Establece direccion de E/S
-#define OP_SDMAM                32      // Establece direccion de memoria
-#define OP_SDMAON               33      // Inicia transferencia DMA
+// El salto de fe (incondicional)
+#define OP_J                    27      
 
-// VECTOR DE INTERRUPCIONES (Codigos 0-8)
-#define INT_SYSCALL_INVALIDA    0       // Codigo de llamada al sistema invalido
-#define INT_CODIGO_INVALIDO     1       // Codigo de interrupcion invalido
-#define INT_SVC                 2       // Llamada al sistema (svc)
-#define INT_TIMER               3       // Interrupcion de reloj
-#define INT_IO_DONE             4       // Finalizacion de operacion E/S
-#define INT_INSTRUCCION_INVALIDA 5      // Instruccion invalida
-#define INT_DIRECCION_INVALIDA  6       // Direccionamiento invalido
-#define INT_UNDERFLOW           7       // Underflow
-#define INT_OVERFLOW            8       // Overflow
+// Instrucciones para manejar el DMA (E/S)
+// El CPU configura estos registros y luego dispara el DMA
+#define OP_SDMAP                28      
+#define OP_SDMAC                29      
+#define OP_SDMAS                30      
+#define OP_SDMAIO               31      
+#define OP_SDMAM                32      
+#define OP_SDMAON               33      // "Go DMA!"
 
-// ESTRUCTURAS DE E/S (Disco y DMA)
-#define DISCO_CILINDROS         10      // Numero de cilindros
-#define DISCO_PISTAS            10      // Numero de pistas
-#define DISCO_SECTORES          100     // Sectores por cilindro
-#define TAMANO_SECTOR           9       // Caracteres por sector
+// --- Vector de Interrupciones ---
+// Lista de posibles catastrofes o eventos.
+// Las fatales matan el programa, las otras se manejan y seguimos.
 
-// Estructura de un Sector del disco
+#define INT_SYSCALL_INVALIDA    0       
+#define INT_CODIGO_INVALIDO     1       // Opcode desconocido (instruccion basura)
+#define INT_SVC                 2       // Software Interrupt (buena)
+#define INT_TIMER               3       // Timer hardware (multitarea simulada)
+#define INT_IO_DONE             4       // DMA aviso que termino
+#define INT_INSTRUCCION_INVALIDA 5      // Usuario intento ejecutar instruccion privilegiada
+#define INT_DIRECCION_INVALIDA  6       // Segfault
+#define INT_UNDERFLOW           7       // Pop en pila vacia
+#define INT_OVERFLOW            8       // Suma dio > 99999999
+
+// --- Definiciones de Disco ---
+
+#define DISCO_CILINDROS         10      
+#define DISCO_PISTAS            10      
+#define DISCO_SECTORES          100     
+#define TAMANO_SECTOR           9       // Cabe justo una Palabra (8 digs + signo?) o char string.
+
 typedef struct {
-    char datos[TAMANO_SECTOR];  // Contenido del sector (9 caracteres)
+    char datos[TAMANO_SECTOR];  
 } Sector;
 
-// Estructura del Disco Magnetico
-// Arreglo 3D: [Cilindro][Pista][Sector]
+// 3D array para simular la geometria fisica del disco magnetico.
+// Se accede por [Cil][Pista][Sec]
 typedef struct {
     Sector sectores[DISCO_CILINDROS][DISCO_PISTAS][DISCO_SECTORES];
 } DiscoDuro;
 
-// Controlador DMA (Acceso Directo a Memoria)
+// El cerebro del DMA.
+// Guarda "que" queremos copiar, "de donde" y "a donde".
+// Es como un CPU tonto dedicado a copiar memoria.
 typedef struct {
-    // Registros de Control para seleccionar ubicacion en disco
-    int pistaSeleccionada;      // Pista seleccionada
-    int cilindroSeleccionado;   // Cilindro seleccionado
-    int sectorSeleccionado;     // Sector seleccionado
-    int direccionIo;            // 0 = Leer de disco, 1 = Escribir a disco
-    int direccionMemoria;       // Direccion RAM para la transferencia
+    int pistaSeleccionada;      
+    int cilindroSeleccionado;   
+    int sectorSeleccionado;     
+    int direccionIo;            // 0: Disco->RAM, 1: RAM->Disco
+    int direccionMemoria;       
     
-    // Estado del DMA
-    int estado;                 // 0 = Exito, 1 = Error
-    int ocupado;                // 1 = Operacion en curso, 0 = Libre
+    int estado;                 // 0 OK, 1 Fallo
+    int ocupado;                // Semaforo logico para no pisar transferencias
     
-    // Hilo para operacion asincrona (transferencia en paralelo)
-    pthread_t hiloId;
+    pthread_t hiloId;           // Para que corra en background real (threads POSIX)
 } ControladorDma;
 
-// VARIABLES GLOBALES (Componentes de Hardware)
-// La memoria principal (memoriaPrincipal) y el semaforo del bus
-// (bloqueoBus) se declaran en memoria.h
 
-// Registros de la CPU
+// --- Variables Globales ---
+// (Externs para que todos los .c vean la misma instancia del hardware)
+
 extern Registros registrosCpu;
-
-// Bandera de interrupcion pendiente del DMA
 extern int interrupcionPendienteDma;
-
-// Disco Duro
 extern DiscoDuro discoDuro;
-
-// Controlador DMA
 extern ControladorDma dma;
-
-// Fin de programa: controlado por los registros RB/RL 
-// Bandera para saber si la CPU sigue ejecutando
 extern int cpuEjecutando;
 
-// PROTOTIPOS DE FUNCIONES DEL HARDWARE 
-// Inicializacion y finalizacion del hardware
-void inicializarHardware();     // Inicializa todos los componentes
-void finalizarHardware();       // Libera recursos del hardware
-void inicializarMemoria();      // Inicializa la memoria RAM
-void inicializarDisco();        // Inicializa el disco duro
-void guardarDisco();            // Guarda el contenido del disco
+// --- Prototipos de Hardware ---
 
-// Operaciones de Memoria
-void escribirMemoria(int direccion, Palabra dato);  // Escribe en memoria
-Palabra leerMemoria(int direccion);                  // Lee de memoria
+void inicializarMemoria();      
+void inicializarDisco();        
 
-// Operaciones de CPU
-int cicloCpu();                 // Ejecuta ciclo fetch-decode-execute, retorna 1 para continuar
-void reiniciarCpu();            // Reinicia los registros de la CPU
-int palabraAEntero(Palabra p);  // Convierte Palabra a entero
-Palabra enteroAPalabra(int val);// Convierte entero a Palabra
+void escribirMemoria(int direccion, Palabra dato);  
+Palabra leerMemoria(int direccion);                  
 
-// Operaciones de Disco y DMA
-void iniciarTransferenciaDma(); // Inicia transferencia DMA
-int verificarInterrupcionDma(); // Verifica si hay interrupcion del DMA
+int cicloCpu();                 
+int palabraAEntero(Palabra p);  
+Palabra enteroAPalabra(int val);
+
+void iniciarTransferenciaDma(); 
+int verificarInterrupcionDma(); 
 int leerSectorDisco(int pista, int cilindro, int sector, char *bufferSalida);
 int escribirSectorDisco(int pista, int cilindro, int sector, const char *bufferEntrada);
 

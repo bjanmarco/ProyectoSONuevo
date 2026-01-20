@@ -39,8 +39,7 @@ void inicializarDisco() {
     }
     printf("[DISCO] Disco inicializado: %d cilindros, %d pistas, %d sectores\n",
            DISCO_CILINDROS, DISCO_PISTAS, DISCO_SECTORES);
-    printf("[DISCO] Capacidad total: %d sectores de %d caracteres\n",
-           DISCO_CILINDROS * DISCO_PISTAS * DISCO_SECTORES, TAMANO_SECTOR);
+    printf("[DISCO] Estructura: %d caracteres por sector\n", TAMANO_SECTOR);
 }
 
 int leerSectorDisco(int pista, int cilindro, int sector, char *buffer) {

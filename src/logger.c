@@ -66,7 +66,7 @@ int inicializarLogger(const char *nombreArchivo) {
     fprintf(archivoLog, " Iniciado: %s\n", timestamp);
     fprintf(archivoLog, " Archivo: %s\n", archivo);
     fflush(archivoLog);
-    printf("[LOGGER] Sistema de log inicializado: %s\n", archivo);
+    printf("\n[LOGGER] Log creado: %s\n", archivo);
     
     return 0;
 }
@@ -86,7 +86,7 @@ void finalizarLogger() {
         archivoLog = NULL;
         loggerActivo = 0;
         
-        printf("[LOGGER] Sistema de log finalizado. Total lineas: %d\n", contadorLineasLog);
+        printf("[LOGGER] Log finalizado. Total lineas: %d\n", contadorLineasLog);
     }
 }
 

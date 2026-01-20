@@ -1,6 +1,7 @@
 // ARCHIVO: dma.h
-// DESCRIPCION: Cabecera del modulo DMA (Acceso Directo a Memoria).
-//              Define las funciones para operar el controlador DMA.
+// DMA = Direct Memory Access.
+// Este modulo es el "ayudante" del CPU. Se encarga de mover datos entre Disco y RAM
+// en paralelo, para que el CPU pueda seguir haciendo otras cosas.
 
 #ifndef DMA_H
 #define DMA_H
@@ -8,38 +9,26 @@
 #include <pthread.h>
 #include "hardware.h"
 
-// VARIABLES GLOBALES DEL DMA
+// --- Variables Globales ---
 
-// Controlador DMA
+// Estructura de control del DMA (registros de que copiar a donde).
 extern ControladorDma dma;
 
-// Bandera para indicar que el DMA termino y hay interrupcion pendiente
+// Bandera que se levanta cuando el DMA termina.
+// El CPU la revisa en cada ciclo para ver si tiene que atender la interrupcion.
 extern int interrupcionPendienteDma;
 
-// PROTOTIPOS DE FUNCIONES DEL DMA
+// --- Funciones del DMA ---
 
-// inicializarDma()
-// Inicializa el controlador DMA con valores por defecto.
-// Todos los registros se ponen a cero y el estado a libre.
+// Pone todo en cero.
 void inicializarDma();
 
-// iniciarTransferenciaDma()
-// Inicia una transferencia de E/S en un hilo separado.
-// El DMA lee los parametros de sus registros internos y ejecuta:
-// - Si direccionIo = 0: Lee del disco y escribe en memoria
-// - Si direccionIo = 1: Lee de memoria y escribe en disco
-// Al finalizar, establece estado (0=exito, 1=error) y genera
-// interrupcion INT_IO_DONE.
+// Esta es la magia. Crea un hilo (thread) nuevo de verdad.
+// Eso permite que la copia de datos ocurra AL MISMO TIEMPO que el CPU ejecuta instrucciones.
+// Sin esto, la maquina se congelaria cada vez que leemos del disco.
 void iniciarTransferenciaDma();
 
-// verificarInterrupcionDma()
-// Verifica si el DMA tiene una interrupcion pendiente.
-// Retorna:
-//   1 si hay interrupcion pendiente, 0 si no
-// verificarInterrupcionDma
-// Verifica si el DMA tiene una interrupcion pendiente.
-// Retorna:
-//   1 si hay interrupcion pendiente, 0 si no
+// El CPU llama a esto para preguntar: "¿Ya termino el DMA?"
 int verificarInterrupcionDma();
 
-#endif /* DMA_H */
+#endif

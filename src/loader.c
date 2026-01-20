@@ -5,6 +5,7 @@
 #include "../include/memoria.h"
 #include "../include/hardware.h"
 #include "../include/logger.h"
+#include "../include/cpu.h"
 
 // Siguiente direccion de memoria disponible para cargar programas
 // Inicia en 300 (INICIO_MEMORIA_USUARIO)
@@ -34,7 +35,7 @@ void inicializarLoader() {
            siguienteDireccionDisponible);
 }
 
-int cargarPrograma(const char *rutaArchivo) {
+int cargarPrograma(const char *rutaArchivo, int direccionDestino) {
     FILE *archivo = NULL;
     char linea[MAX_LINEA];
     int lineaInicio = -1, numeroPalabrasHeader = -1;
@@ -141,7 +142,51 @@ int cargarPrograma(const char *rutaArchivo) {
         logLoader("ERROR: No se encontraron instrucciones");
         goto cleanup;
     }
-    // Verificar que NumeroPalabras coincida (si fue especificado)
+
+    // Determinar direccion base
+    int direccionBase;
+    int modoManual = (direccionDestino != -1);
+
+    if (modoManual) {
+        direccionBase = direccionDestino;
+        if (direccionBase < INICIO_MEMORIA_USUARIO) {
+            logLoader("ERROR: Intento de cargar en zona del SO (0-%d). Direccion solicitada: %d", 
+                      INICIO_MEMORIA_USUARIO - 1, direccionBase);
+            printf("[LOADER] ERROR: Zona reservada para el Sistema Operativo.\n");
+            goto cleanup;
+        }
+    } else {
+        direccionBase = siguienteDireccionDisponible;
+    }
+
+    // Verificar espacio en memoria
+    if (direccionBase + bufferLen >= TAMANO_MEMORIA) {
+        logLoader("ERROR: Memoria insuficiente. Fin de programa (%d) excede memoria (%d)", 
+                  direccionBase + bufferLen, TAMANO_MEMORIA);
+        printf("[LOADER] ERROR: El programa no cabe en la memoria restante.\n");
+        goto cleanup;
+    }
+
+    // VERIFICACION DE COLISIONES
+    // Verificar si el rango de memoria objetivo ya tiene contenido (distinto de 0)
+    int direccionFin = direccionBase + bufferLen;
+    // RESERVA DE PILA: Se prohibe cargar en las ultimas 50 posiciones
+    // para garantizar espacio minimo para la pila del sistema.
+    if (direccionFin > TAMANO_MEMORIA - 50) { 
+        logLoader("ERROR: Intento de cargar en zona de PILA (1950-1999). Fin del programa: %d", direccionFin);
+        printf("[LOADER] ERROR: No hay espacio seguro. Las ultimas 50 posiciones estan RESERVADAS para la Pila.\n");
+        goto cleanup;
+    }
+
+    // Verificar si hay datos preexistentes en el rango
+    for (int k = 0; k < bufferLen; k++) {
+        Palabra p = leerMemoria(direccionBase + k);
+        if (p.digitos != 0 || p.signo != 0) {
+            logLoader("ERROR: Memoria ocupada en direcccon %d. No se puede cargar.", direccionBase + k);
+            printf("[LOADER] ERROR: Conflicto de memoria en direccion %d. Ya contiene datos.\n", direccionBase + k);
+            goto cleanup;
+        }
+    }
     if (numeroPalabrasHeader != -1 && numeroPalabrasHeader != bufferLen) {
         logLoader("ERROR: .NumeroPalabras (%d) no coincide con instrucciones leidas (%d)",
                numeroPalabrasHeader, bufferLen);
@@ -152,14 +197,10 @@ int cargarPrograma(const char *rutaArchivo) {
         logLoader("ERROR: _start invalido o fuera de rango (debe ser 1..%d)", bufferLen);
         goto cleanup;
     }
-    // Verificar espacio en memoria
-    if (siguienteDireccionDisponible + bufferLen >= TAMANO_MEMORIA) {
-        logLoader("ERROR: Memoria insuficiente para cargar el programa");
-        goto cleanup;
-    }
 
     // Escribir buffer a memoria (commit)
-    int i, direccionBase = siguienteDireccionDisponible;
+    int i;
+    // direccionBase ya fue calculada arriba
     for (i = 0; i < bufferLen; i++) {
         escribirMemoria(direccionBase + i, buffer[i]);
         logLoader("Instruccion %d cargada en direccion %d: %d%07d",
@@ -178,7 +219,17 @@ int cargarPrograma(const char *rutaArchivo) {
     logLoader("Instrucciones: %d, RB: %d, RL: %d, PC inicial: %d",
            bufferLen, programaActual.direccionBase, programaActual.direccionLimite, programaActual.lineaInicio);
 
-    siguienteDireccionDisponible = direccionBase + bufferLen;
+    // Solo actualizar siguienteDireccionDisponible si estamos en modo automatico
+    if (!modoManual) {
+        siguienteDireccionDisponible = direccionBase + bufferLen;
+    } else {
+        // En modo manual, si cargamos "mas alla", podriamos actualizarla tambien para evitar huecos,
+        // pero mejor dejarlo intacto o moverlo al final de lo nuevo si es mayor.
+        // Por simplicidad, si es manual, no movemos el puntero automatico a menos que lo supere.
+        if (direccionBase + bufferLen > siguienteDireccionDisponible) {
+            siguienteDireccionDisponible = direccionBase + bufferLen;
+        }
+    }
     resultado = 0;  // Exito
 
 cleanup:
@@ -214,15 +265,16 @@ void prepararEjecucion() {
     registrosCpu.ac.signo = 0;
     registrosCpu.ac.digitos = 0;
 
+    // LIMPIEZA DE ESTADO DE INTERRUPCIONES
+    // Es fundamental limpiar cualquier interrupcion pendiente de ejecuciones anteriores
+    // (especialmente si terminaron por error fatal), de lo contrario se dispararian
+    // en el primer ciclo del nuevo programa.
+    interrupcionPendiente = 0;
+    codigoInterrupcionPendiente = -1;
+
     logLoader("CPU preparado para ejecucion:");
     logLoader("  RB=%d, RL=%d, PC=%d (logico)",
            registrosCpu.rb, registrosCpu.rl, registrosCpu.psw.pc);
     logLoader("  RX=%d, SP=%d",
            registrosCpu.rx, registrosCpu.sp);
-}
-
-void reiniciarLoader() {
-    siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO;
-    limpiarProgramaActual();
-    logLoader("Loader reiniciado. Direccion base: %d", siguienteDireccionDisponible);
 }

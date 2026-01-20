@@ -1,21 +1,20 @@
+# Compilador y flags
 CC=gcc
 CFLAGS=-Wall -Iinclude
 
-OBJS=obj/cpu.o obj/memoria.o obj/disco.o obj/dma.o obj/loader.o obj/logger.o obj/main.o
+# Archivos fuente
+SRCS=src/cpu.c src/memoria.c src/disco.c src/dma.c src/loader.c src/logger.c src/main.c
 
-all: carpetas bin/maquina_virtual limpiar_objetos
+# Nombre del ejecutable (en el directorio raiz)
+TARGET=maquina_virtual
 
-carpetas:
-	mkdir -p obj bin
+# Regla principal: compila todos los fuentes directamente al ejecutable
+all: $(TARGET)
 
-bin/maquina_virtual: $(OBJS)
-	$(CC) $(OBJS) -o bin/maquina_virtual -lpthread
+# Compila todos los archivos fuente en un solo paso
+$(TARGET): $(SRCS)
+	$(CC) $(CFLAGS) $(SRCS) -o $(TARGET) -lpthread
 
-obj/%.o: src/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-limpiar_objetos:
-	rm -f obj/*.o
-
+# Limpia el ejecutable
 clean:
-	rm -f bin/maquina_virtual obj/*.o
+	rm -f $(TARGET)

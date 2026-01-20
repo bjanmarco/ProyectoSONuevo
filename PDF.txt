@@ -1,9 +1,11 @@
 _start 1 
-.NumeroPalabras 5 
+.NumeroPalabras 7 
 .NombreProg 5mas5 
 
 04100005
 00100005
 25000000
 04100007
+04100007
+13000000
 04100007

@@ -1,74 +1,52 @@
-//ARCHIVO: loader.h
-//DESCRIPCION: Cabecera del cargador de programas de la maquina virtual.
-//              Define las funciones para cargar programas desde archivos.
+// ARCHIVO: loader.h
+// El Portero.
+// Este modulo lee los archivos de programa (nuestros "ejecutables" de texto)
+// y los carga byte a byte en la memoria RAM para que el CPU los pueda ejecutar.
 
 #ifndef LOADER_H
 #define LOADER_H
 
 #include "hardware.h"
 
-// CONSTANTES DEL LOADER
-// Tamanio maximo del nombre de un programa
+// --- Constantes ---
+// Nombres de archivos y buffers.
 #define MAX_NOMBRE_PROGRAMA 50
-
-// Tamanio maximo de una linea del archivo
 #define MAX_LINEA 100
 
-// ESTRUCTURA DE INFORMACION DE PROGRAMA
-// Almacena los datos del programa cargado
+// Struct para recordar que cargamos.
+// Necesitamos saber donde empieza (_start), cuantas lineas son,
+// y donde lo pusimos (RB/RL) para configurar el CPU antes de correr.
 typedef struct {
-    char nombre[MAX_NOMBRE_PROGRAMA];   // Nombre del programa
-    int lineaInicio;                    // Valor de _start (donde empieza ejecucion)
-    int numeroPalabras;                 // Cantidad de instrucciones
-    int direccionBase;                  // RB asignado (direccion fisica)
-    int direccionLimite;                // RL asignado (direccion fisica)
+    char nombre[MAX_NOMBRE_PROGRAMA];   
+    int lineaInicio;                    // Aqui es donde salta el PC al empezar
+    int numeroPalabras;                 // Tamaño total del codigo
+    int direccionBase;                  // RB (Donde comienza en memoria FISICA)
+    int direccionLimite;                // RL (Donde termina)
 } InfoPrograma;
 
-// VARIABLES GLOBALES DEL LOADER
-// Siguiente direccion de memoria disponible para cargar programas
-// Inicia en INICIO_MEMORIA_USUARIO (300) y se incrementa
+// --- Variables Globales ---
+
+// Puntero inteligente: recuerda cual es la proxima celda libre de RAM
+// para que si cargamos varios programas no se pisen entre ellos.
 extern int siguienteDireccionDisponible;
 
-// Informacion del ultimo programa cargado
 extern InfoPrograma programaActual;
 
-// PROTOTIPOS DE FUNCOONES DEL LOADER
+// --- Funciones del Loader ---
 
-// inicializarLoader()  
-// Inicializa el loader.
-// Establece la siguiente direccion disponible a INICIO_MEMORIA_USUARIO (300).
+// Reinicia el puntero de "proxima direccion libre" (normalmente a 300).
 void inicializarLoader();
 
-// cargarPrograma()
-// Carga un programa desde un archivo a memoria.
-// El formato del archivo es:
-//   _start <linea de inicio>
-//   .NumeroPalabras <cantidad>
-//   .NombreProg <nombre>
-//   <instrucciones en formato 8 digitos>
-//   .
-// Parametros:
-//   rutaArchivo - Ruta al archivo del programa
-// Retorna:
-//   0 si se cargo exitosamente
-//   1 si hubo error (archivo no existe, formato invalido, etc.)
-// Efectos:
-//   - Carga las instrucciones en memoria a partir de siguienteDireccionDisponible
-//   - Actualiza registrosCpu.rb, rl, psw.pc
-//   - Actualiza programaActual con la info del programa
-//   - Incrementa siguienteDireccionDisponible
-int cargarPrograma(const char *rutaArchivo);
+// La funcion heavy.
+// 1. Abre el archivo.
+// 2. Lee linea por linea (metadata y codigo).
+// 3. Escribe en memoriaPrincipal[].
+// 4. Si direccionDestino es -1, decide el solo donde ponerlo (modo automatico).
+int cargarPrograma(const char *rutaArchivo, int direccionDestino);
 
-// prepararEjecucion()
-// Prepara el CPU para ejecutar el programa cargado.
-// Establece PC, RB, RL, SP segun el programa actual.
+// Configura los registros del CPU (PC, RB, RL, SP) usando la info
+// del ultimo programa que cargamos. Deja todo listo para el comando 'run'.
 void prepararEjecucion();
 
-
-// reiniciarLoader()
-// Reinicia el loader al estado inicial.
-// Vuelve a poner siguienteDireccionDisponible en 300.
-// Util para reiniciar la maquina virtual.
-void reiniciarLoader();
 
 #endif 

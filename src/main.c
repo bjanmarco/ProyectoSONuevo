@@ -31,7 +31,6 @@ extern int cpuEjecutando;
 extern int contadorCiclos;
 
 // PROTOTIPOS DE FUNCIONES LOCALES
-void mostrarBienvenida();
 void mostrarAyuda();
 void mostrarEstadoRegistros();
 int ejecutarModoNormal();
@@ -48,7 +47,7 @@ int main(int argc, char *argv[]) {
     (void)argv;
     
     // Mostrar bienvenida
-    mostrarBienvenida();
+    // (Bienvenida eliminada por solicitud del usuario)
     
     // Inicializar el logger
     if (inicializarLogger("maquina_virtual.log") != 0) {
@@ -58,32 +57,35 @@ int main(int argc, char *argv[]) {
     logSistema("Maquina virtual iniciada");
     
     // Inicializar todos los componentes de hardware
-    // El sistema arranca en modo KERNEL para la inicializacion
-    printf("\n[SISTEMA] Modo KERNEL activado \n");
-    printf("[SISTEMA] Inicializando componentes de hardware...\n");
+    // Inicializar todos los componentes de hardware (Simulacion de Bootstrap)
+    printf("\n INICIANDO BOOTSTRAP DEL SO \n\n");
+    printf("[BOOTSTRAP] Cargando nucleo y componentes\n");
+    
     inicializarMemoria();
-    logSistema("Memoria inicializada (modo KERNEL)");
+    logSistema("Memoria inicializada (KERNEL)");
     
     inicializarDisco();
-    logSistema("Disco inicializado (modo KERNEL)");
+    logSistema("Disco inicializado (KERNEL)");
     
     inicializarDma();
-    logSistema("DMA inicializado (modo KERNEL)");
+    logSistema("DMA inicializado (KERNEL)");
     
     inicializarLoader();
-    logSistema("Loader inicializado (modo KERNEL)");
+    logSistema("Loader inicializado (KERNEL)");
     
     inicializarCpu();
-    logSistema("CPU inicializado (modo KERNEL)");
+    logSistema("CPU inicializado (KERNEL)");
     
-    printf("[SISTEMA] Todos los componentes inicializados correctamente.\n");
+    printf("[BOOTSTRAP] Componentes de hardware verificados OK.\n");
     
-    // Cambiar a modo USUARIO despues de la inicializacion
-    // Esto simula que el SO termino su arranque y pasa el control al usuario
+    // Cambiar a modo USUARIO
     registrosCpu.psw.modoOperacion = MODO_USUARIO;
-    printf("[SISTEMA] Cambiando a modo USUARIO \n");
     logSistema("Sistema cambiado a modo USUARIO");
-    printf("[SISTEMA] Sistema listo para operar.\n\n");
+    
+    printf("[BOOTSTRAP] Sistema Operativo listo. Sesion de usuario iniciada.\n");
+    
+    // Mostrar comandos disponibles antes de dar control
+    mostrarAyuda();
     
     // Bucle principal de la consola
     while (!salir) {
@@ -123,21 +125,29 @@ int main(int argc, char *argv[]) {
             mostrarAyuda();
         }
         
-        // Comando: cargar <archivo>
+        // Comando: cargar <archivo> [direccion]
         else if (strncmp(comando, "cargar ", 7) == 0) {
-            strncpy(rutaArchivo, comando + 7, MAX_RUTA - 1);
-            rutaArchivo[MAX_RUTA - 1] = '\0';
+            char rutTemp[MAX_RUTA];
+            int dirTemp = -1;
+            int params = sscanf(comando + 7, "%s %d", rutTemp, &dirTemp);
             
-            logLoader("Iniciando carga de: %s", rutaArchivo);
-            
-            if (cargarPrograma(rutaArchivo) == 0) {
-                programaCargado = 1;
-                printf("[LOADER] Programa cargado exitosamente.\n");
-                printf("[LOADER] Use 'run' para ejecutar o 'debug' para depurar.\n\n");
-                logLoader("Programa cargado exitosamente");
+            if (params >= 2) {
+                strncpy(rutaArchivo, rutTemp, MAX_RUTA - 1);
+                rutaArchivo[MAX_RUTA - 1] = '\0';
+                
+                logLoader("Iniciando carga de: %s (Dir: %d)", rutaArchivo, dirTemp);
+                
+                if (cargarPrograma(rutaArchivo, dirTemp) == 0) {
+                    programaCargado = 1;
+                    printf("[LOADER] Programa cargado exitosamente.\n");
+                    printf("[LOADER] Use 'run' para ejecutar o 'debug' para depurar.\n\n");
+                    logLoader("Programa cargado exitosamente");
+                } else {
+                    printf("[LOADER] ERROR: No se pudo cargar el programa.\n\n");
+                    logLoader("ERROR al cargar programa");
+                }
             } else {
-                printf("[LOADER] ERROR: No se pudo cargar el programa.\n\n");
-                logLoader("ERROR al cargar programa");
+                printf("Uso: cargar <archivo> <direccion_memoria>\n");
             }
         }
         
@@ -146,14 +156,15 @@ int main(int argc, char *argv[]) {
             if (!programaCargado) {
                 printf("ERROR: No hay programa cargado. Use 'cargar <archivo>' primero.\n\n");
             } else {
-                printf(" EJECUTANDO EN MODO NORMAL\n");
+
+                printf("[SISTEMA] Ejecutando programa...\n");
                 logSistema("Iniciando ejecucion en modo NORMAL");
                 
                 modoDebug = 0;
                 prepararEjecucion();
                 ejecutarModoNormal();
                 
-                printf(" EJECUCION FINALIZADA\n\n");
+                printf("[SISTEMA] Ejecucion finalizada.\n\n");
                 logSistema("Ejecucion finalizada");
                 
                 // Programa terminado, permitir cargar otro
@@ -209,26 +220,17 @@ int main(int argc, char *argv[]) {
 }
 
 // FUNCIONES DE INTERFAZ
-
-// mostrarBienvenida()
-// Muestra el mensaje de bienvenida de la maquina virtual.
-void mostrarBienvenida() {
-    printf(" MAQUINA VIRTUAL \n");
-    printf(" Sistema Operativo - UCV 2024 \n");
-    printf(" Escriba 'ayuda' para ver los comandos disponibles. \n");
-}
-
 // mostrarAyuda()
 // Muestra la lista de comandos disponibles.
 void mostrarAyuda() {
     printf("\n");
     printf(" COMANDOS DISPONIBLES \n");
-    printf(" cargar <archivo>  - Carga un programa desde archivo         \n");
-    printf(" run               - Ejecuta el programa en modo normal      \n");
-    printf(" debug             - Ejecuta el programa paso a paso         \n");
-    printf(" registros (reg)   - Muestra el estado de los registros      \n");
-    printf(" ayuda (help)      - Muestra esta ayuda                      \n");
-    printf(" salir (exit)      - Sale de la maquina virtual              \n");
+    printf(" cargar <archivo> <dir> - Carga un programa (dir obligatoria)     \n");
+    printf(" run                    - Ejecuta el programa en modo normal      \n");
+    printf(" debug                  - Ejecuta el programa en modo debug       \n");
+    printf(" registros (reg)        - Muestra los registros                   \n");
+    printf(" ayuda (help)           - Comandos                                \n");
+    printf(" salir (exit)           - Salir                                   \n");
     printf("\n");
 }
 
