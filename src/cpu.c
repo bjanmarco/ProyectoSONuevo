@@ -156,7 +156,9 @@ int verificarDireccionSalto(int direccionLogica) {
 }
 
 void actualizarCodigoCondicion(int resultado) {
-    if (resultado == 0) {
+    if (resultado > 9999999 || resultado < -9999999) {
+        registrosCpu.psw.codigoCondicion = CC_DESBORDAMIENTO;
+    } else if (resultado == 0) {
         registrosCpu.psw.codigoCondicion = CC_CERO;
     } else if (resultado < 0) {
         registrosCpu.psw.codigoCondicion = CC_NEGATIVO;
@@ -294,34 +296,10 @@ void ejecutarCpu() {
             break;
         }
         
-        // Verificar interrupciones pendientes
-        if (interrupcionPendiente && registrosCpu.psw.habilitarInterrupciones) {
-            if (!manejarInterrupcion(codigoInterrupcionPendiente)) {
-                // Interrupcion fatal, detener
-                break;
-            }
-            interrupcionPendiente = 0;
-            codigoInterrupcionPendiente = -1;
-        }
-        
-        // Verificar interrupcion de reloj
-        if (intervaloReloj > 0) {
-            contadorCiclos++;
-            if (contadorCiclos >= intervaloReloj) {
-                contadorCiclos = 0;
-                if (registrosCpu.psw.habilitarInterrupciones) {
-                    manejarInterrupcion(INT_TIMER);
-                }
-            }
-        }
-        
-        // Verificar interrupcion del DMA (E/S completada)
-        if (verificarInterrupcionDma() && registrosCpu.psw.habilitarInterrupciones) {
-            interrupcionPendienteDma = 0;  // Limpiar la bandera
-            manejarInterrupcion(INT_IO_DONE);
-        }
-        
+
     }
+    
+    // Mostrar estado final
     
     // Mostrar estado final
     imprimirLog("Devolviendo control a la consola");
@@ -375,7 +353,41 @@ int cicloCpu() {
     imprimirLog(buffer);
     
     // 3. EXECUTE
-    return faseExecute();
+    faseExecute();
+    
+    // VERIFICACION DE INTERRUPCIONES (Parte final del ciclo)
+    
+    // 1. Interrupciones generadas por la instruccion (Pendientes/Fatales)
+    if (interrupcionPendiente && registrosCpu.psw.habilitarInterrupciones) {
+        // Intentar manejar la interrupcion
+        if (!manejarInterrupcion(codigoInterrupcionPendiente)) {
+            // Interrupcion FATAL -> Detener CPU
+            cpuEjecutando = 0;
+        }
+        // Limpiar flags
+        interrupcionPendiente = 0;
+        codigoInterrupcionPendiente = -1;
+    }
+    
+    // 2. Interrupcion de Reloj (Timer)
+    if (intervaloReloj > 0) {
+        contadorCiclos++;
+        if (contadorCiclos >= intervaloReloj) {
+            contadorCiclos = 0;
+            if (registrosCpu.psw.habilitarInterrupciones) {
+                manejarInterrupcion(INT_TIMER);
+            }
+        }
+    }
+    
+    // 3. Interrupcion de E/S (DMA)
+    if (verificarInterrupcionDma() && registrosCpu.psw.habilitarInterrupciones) {
+        interrupcionPendienteDma = 0;
+        manejarInterrupcion(INT_IO_DONE);
+    }
+
+    // Si hubo error fatal, cpuEjecutando sera 0
+    return cpuEjecutando;
 }
 
 void faseFetch() {
@@ -830,7 +842,7 @@ int manejarInterrupcion(int codigoInterrupcion) {
     if (esRecuperable) strcpy(tipoInt, "RECUPERABLE");
     else strcpy(tipoInt, "FATAL");
 
-    logInterrupcion("Ciclo %d | Int %d (%s): %s", contadorCiclos, codigoInterrupcion, tipoInt, desc);
+    logInterrupcion("Ciclo %d | Interrupcion %d (%s): %s", contadorCiclos, codigoInterrupcion, tipoInt, desc);
 
     if (!esRecuperable) {
         logCpu("Deteniendo ejecucion debido a interrupcion fatal: %s", desc);
