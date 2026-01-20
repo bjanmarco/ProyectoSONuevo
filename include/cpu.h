@@ -1,21 +1,16 @@
-/*
- * ============================================================================
- * ARCHIVO: cpu.h
- * DESCRIPCION: Cabecera del componente CPU de la maquina virtual.
- * ============================================================================
- */
+// ARCHIVO: cpu.h
+// DESCRIPCION: Cabecera del componente CPU de la maquina virtual.
 
 #ifndef CPU_H
 #define CPU_H
 
 #include "hardware.h"
 
-/* Offset para traduccion de direcciones logicas a fisicas */
+// Offset para traduccion de direcciones logicas a fisicas
 #define OFFSET_MEMORIA_USUARIO  300
 #define NUM_INTERRUPCIONES      9
 
-/* Estructura para guardar contexto (usado en interrupciones) */
-/* NOTA MULTIPROGRAMACION: Esto formaria parte del PCB en un sistema real */
+// Estructura para guardar contexto (usado en interrupciones)
 typedef struct {
     Palabra ac;      // Acumulador
     Palabra mar;     // MAR al momento de la interrupcion
@@ -28,35 +23,34 @@ typedef struct {
     Psw psw;
 } ContextoCpu;
 
-/* Variables externas del CPU */
+// Variables externas del CPU
 extern int cpuEjecutando;
 extern int contadorCiclos;
 extern int intervaloReloj;
 extern int interrupcionPendiente;
 extern int codigoInterrupcionPendiente;
 
-/* Funciones principales del CPU */
+// Funciones principales del CPU
 void inicializarCpu();
 void ejecutarCpu();
 int cicloCpu();
 
-/* Funciones del ciclo de instruccion */
+// Funciones del ciclo de instruccion
 void faseFetch();
 void faseDecode();
 int faseExecute();
 
-/* Funciones de manejo de interrupciones */
+// Funciones de manejo de interrupciones
 int manejarInterrupcion(int codigoInterrupcion);
 void guardarContexto();
 void restaurarContexto();
 int verificarInterrupcionesPendientes();
 
-/* Funciones auxiliares para PSW */
+// Funciones auxiliares para PSW
 Palabra codificarPsw();
 void decodificarPsw(Palabra pswPalabra);
 
-
-/* Funciones auxiliares */
+// Funciones auxiliares
 int traducirDireccion(int direccionLogica);
 int verificarProteccionMemoria(int direccionFisica);
 int verificarDireccionSalto(int direccionLogica);
@@ -68,4 +62,4 @@ Palabra enteroAPalabra(int val);
 void imprimirEstadoCpu();
 void imprimirLog(const char *mensaje);
 
-#endif /* CPU_H */
+#endif 

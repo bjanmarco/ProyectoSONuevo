@@ -63,13 +63,9 @@ int inicializarLogger(const char *nombreArchivo) {
     
     // Escribir cabecera del log
     obtenerTimestamp(timestamp, sizeof(timestamp));
-    fprintf(archivoLog, "================================================================================\n");
-    fprintf(archivoLog, " MAQUINA VIRTUAL - LOG DE SISTEMA\n");
     fprintf(archivoLog, " Iniciado: %s\n", timestamp);
     fprintf(archivoLog, " Archivo: %s\n", archivo);
-    fprintf(archivoLog, "================================================================================\n\n");
     fflush(archivoLog);
-    
     printf("[LOGGER] Sistema de log inicializado: %s\n", archivo);
     
     return 0;
@@ -82,11 +78,9 @@ void finalizarLogger() {
         obtenerTimestamp(timestamp, sizeof(timestamp));
         
         // Escribir pie del log
-        fprintf(archivoLog, "\n================================================================================\n");
         fprintf(archivoLog, " FIN DEL LOG\n");
         fprintf(archivoLog, " Finalizado: %s\n", timestamp);
         fprintf(archivoLog, " Total lineas: %d\n", contadorLineasLog);
-        fprintf(archivoLog, "================================================================================\n");
         
         fclose(archivoLog);
         archivoLog = NULL;

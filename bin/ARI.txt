@@ -1,0 +1,36 @@
+_start 1
+.NumeroPalabras 7
+.NombreProg ARI
+// INSTRUCCION: LOAD 100 (Inmediato)
+// Descripcion: Carga el valor 100 en el acumulador.
+// Registros: AC=+0000100, MAR=00300, MDR=04100100, IR=Op=04 Dir=1 Val=00100, RB=00300, RL=01999, RX=01999, SP=01999, PSW=CC=0 Modo=USUARIO Int=HAB
+// Pila: [01999]: +0000000 (Vacia)
+04100100
+// INSTRUCCION: SUM 50 (Inmediato)
+// Descripcion: Suma 50 al acumulador (100 + 50 = 150).
+// Registros: AC=+0000150, MAR=00301, MDR=00100050, IR=Op=00 Dir=1 Val=00050, RB=00300, RL=01999, RX=01999, SP=01999, PSW=CC=2 Modo=USUARIO Int=HAB
+// Pila: [01999]: +0000000 (Vacia)
+00100050
+// INSTRUCCION: RES 30 (Inmediato)
+// Descripcion: Resta 30 al acumulador (150 - 30 = 120).
+// Registros: AC=+0000120, MAR=00302, MDR=01100030, IR=Op=01 Dir=1 Val=00030, RB=00300, RL=01999, RX=01999, SP=01999, PSW=CC=2 Modo=USUARIO Int=HAB
+// Pila: [01999]: +0000000 (Vacia)
+01100030
+// INSTRUCCION: MULT 2 (Inmediato)
+// Descripcion: Multiplica el acumulador por 2 (120 * 2 = 240).
+// Registros: AC=+0000240, MAR=00303, MDR=02100002, IR=Op=02 Dir=1 Val=00002, RB=00300, RL=01999, RX=01999, SP=01999, PSW=CC=2 Modo=USUARIO Int=HAB
+// Pila: [01999]: +0000000 (Vacia)
+02100002
+// INSTRUCCION: DIVI 4 (Inmediato)
+// Descripcion: Divide el acumulador entre 4 (240 / 4 = 60).
+// Registros: AC=+0000060, MAR=00304, MDR=03100004, IR=Op=03 Dir=1 Val=00004, RB=00300, RL=01999, RX=01999, SP=01999, PSW=CC=2 Modo=USUARIO Int=HAB
+// Pila: [01999]: +0000000 (Vacia)
+03100004
+// INSTRUCCION: DIVI 0 (Inmediato)
+// Descripcion: Intento de division por cero. Provoca interrupcion fatal.
+// Anticipado: Genera INT_OVERFLOW (8) y detiene la CPU.
+// Registros (Previo a Error): AC=+0000060, MAR=00305, MDR=03100000, IR=Op=03 Dir=1 Val=00000, RB=00300, RL=01999, RX=01999, SP=01999, PSW=CC=2 Modo=USUARIO Int=HAB
+// Pila: [01999]: +0000000 (Vacia)
+03100000
+// SALTOS DE CONTROL (SVC 0 para terminar si no hay error)
+13100000

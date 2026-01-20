@@ -4,6 +4,7 @@
 #include "../include/loader.h"
 #include "../include/memoria.h"
 #include "../include/hardware.h"
+#include "../include/logger.h"
 
 // Siguiente direccion de memoria disponible para cargar programas
 // Inicia en 300 (INICIO_MEMORIA_USUARIO)
@@ -29,7 +30,7 @@ static void limpiarProgramaActual() {
 void inicializarLoader() {
     siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO;
     limpiarProgramaActual();
-    printf("[LOADER] Loader inicializado. Direccion base: %d\n", 
+    logLoader("Loader inicializado. Direccion base: %d", 
            siguienteDireccionDisponible);
 }
 
@@ -46,12 +47,12 @@ int cargarPrograma(const char *rutaArchivo) {
     Palabra *buffer = NULL;
     int bufferCap = 0, bufferLen = 0;
 
-    printf("[LOADER] Intentando cargar: %s\n", rutaArchivo);
+    logLoader("Intentando cargar: %s", rutaArchivo);
 
     // Abrir el archivo
     archivo = fopen(rutaArchivo, "r");
     if (archivo == NULL) {
-        printf("[LOADER] ERROR: No se pudo abrir el archivo %s\n", rutaArchivo);
+        logLoader("ERROR: No se pudo abrir el archivo %s", rutaArchivo);
         return 1;
     }
 
@@ -65,36 +66,36 @@ int cargarPrograma(const char *rutaArchivo) {
         // Parsear _start
         if (strncmp(linea, "_start", 6) == 0) {
             if (sscanf(linea, "_start %d", &lineaInicio) != 1) {
-                printf("[LOADER] ERROR: _start invalido\n");
+                logLoader("ERROR: _start invalido");
                 goto cleanup;
             }
-            printf("[LOADER] _start = %d\n", lineaInicio);
+            logLoader("_start = %d", lineaInicio);
             continue;
         }
 
         // Parsear .NumeroPalabras
         if (strncmp(linea, ".NumeroPalabras", 15) == 0) {
             if (sscanf(linea, ".NumeroPalabras %d", &numeroPalabrasHeader) != 1) {
-                printf("[LOADER] ERROR: .NumeroPalabras invalido\n");
+                logLoader("ERROR: .NumeroPalabras invalido");
                 goto cleanup;
             }
-            printf("[LOADER] NumeroPalabras (encabezado) = %d\n", numeroPalabrasHeader);
+            logLoader("NumeroPalabras (encabezado) = %d", numeroPalabrasHeader);
             continue;
         }
 
         // Parsear .NombreProg
         if (strncmp(linea, ".NombreProg", 11) == 0) {
             if (sscanf(linea, ".NombreProg %49s", nombrePrograma) != 1) {
-                printf("[LOADER] ERROR: .NombreProg invalido\n");
+                logLoader("ERROR: .NombreProg invalido");
                 goto cleanup;
             }
-            printf("[LOADER] NombreProg = %s\n", nombrePrograma);
+            logLoader("NombreProg = %s", nombrePrograma);
             continue;
         }
 
         // Detectar fin del programa (una linea con solo '.')
         if (linea[0] == '.' && strlen(linea) == 1) {
-            printf("[LOADER] Fin del programa detectado\n");
+            logLoader("Fin del programa detectado");
             break;
         }
 
@@ -104,14 +105,14 @@ int cargarPrograma(const char *rutaArchivo) {
             if (linea[i] < '0' || linea[i] > '9') { ok = 0; break; }
         }
         if (!ok || len == 0 || len > 8) {
-            printf("[LOADER] ERROR: Instruccion invalida en archivo: '%s'\n", linea);
+            logLoader("ERROR: Instruccion invalida en archivo: '%s'", linea);
             goto cleanup;
         }
 
         // Convertir la linea a entero largo
         valorInstruccion = atol(linea);
         if (valorInstruccion < 0 || valorInstruccion > 99999999L) {
-            printf("[LOADER] ERROR: Valor de instruccion fuera de rango: %ld\n", valorInstruccion);
+            logLoader("ERROR: Valor de instruccion fuera de rango: %ld", valorInstruccion);
             goto cleanup;
         }
 
@@ -124,7 +125,7 @@ int cargarPrograma(const char *rutaArchivo) {
             int nuevaCap = (bufferCap == 0) ? 16 : bufferCap * 2;
             Palabra *tmp = (Palabra*)realloc(buffer, nuevaCap * sizeof(Palabra));
             if (tmp == NULL) {
-                printf("[LOADER] ERROR: No hay memoria para buffer\n");
+                logLoader("ERROR: No hay memoria para buffer");
                 goto cleanup;
             }
             buffer = tmp; bufferCap = nuevaCap;
@@ -137,23 +138,23 @@ int cargarPrograma(const char *rutaArchivo) {
 
     // Verificar que se leyeron instrucciones
     if (bufferLen == 0) {
-        printf("[LOADER] ERROR: No se encontraron instrucciones\n");
+        logLoader("ERROR: No se encontraron instrucciones");
         goto cleanup;
     }
     // Verificar que NumeroPalabras coincida (si fue especificado)
     if (numeroPalabrasHeader != -1 && numeroPalabrasHeader != bufferLen) {
-        printf("[LOADER] ERROR: .NumeroPalabras (%d) no coincide con instrucciones leidas (%d)\n",
+        logLoader("ERROR: .NumeroPalabras (%d) no coincide con instrucciones leidas (%d)",
                numeroPalabrasHeader, bufferLen);
         goto cleanup;
     }
     // Validar _start (base 1, de 1 a bufferLen)
     if (lineaInicio < 1 || lineaInicio > bufferLen) {
-        printf("[LOADER] ERROR: _start invalido o fuera de rango (debe ser 1..%d)\n", bufferLen);
+        logLoader("ERROR: _start invalido o fuera de rango (debe ser 1..%d)", bufferLen);
         goto cleanup;
     }
     // Verificar espacio en memoria
     if (siguienteDireccionDisponible + bufferLen >= TAMANO_MEMORIA) {
-        printf("[LOADER] ERROR: Memoria insuficiente para cargar el programa\n");
+        logLoader("ERROR: Memoria insuficiente para cargar el programa");
         goto cleanup;
     }
 
@@ -161,7 +162,7 @@ int cargarPrograma(const char *rutaArchivo) {
     int i, direccionBase = siguienteDireccionDisponible;
     for (i = 0; i < bufferLen; i++) {
         escribirMemoria(direccionBase + i, buffer[i]);
-        printf("[LOADER] Instruccion %d cargada en direccion %d: %d%07d\n",
+        logLoader("Instruccion %d cargada en direccion %d: %d%07d",
                i, direccionBase + i, buffer[i].signo, buffer[i].digitos);
     }
 
@@ -173,11 +174,9 @@ int cargarPrograma(const char *rutaArchivo) {
     programaActual.direccionBase = direccionBase;
     programaActual.direccionLimite = direccionBase + bufferLen - 1;  // Ultima instruccion
 
-    printf("[LOADER] ============================================\n");
-    printf("[LOADER] Programa '%s' cargado exitosamente\n", programaActual.nombre);
-    printf("[LOADER] Instrucciones: %d, RB: %d, RL: %d, PC inicial: %d\n",
+    logLoader("Programa '%s' cargado exitosamente", programaActual.nombre);
+    logLoader("Instrucciones: %d, RB: %d, RL: %d, PC inicial: %d",
            bufferLen, programaActual.direccionBase, programaActual.direccionLimite, programaActual.lineaInicio);
-    printf("[LOADER] ============================================\n");
 
     siguienteDireccionDisponible = direccionBase + bufferLen;
     resultado = 0;  // Exito
@@ -186,7 +185,7 @@ cleanup:
     if (archivo != NULL) fclose(archivo);
     free(buffer);
     return resultado;
-} 
+}
 
 void prepararEjecucion() {
     // Reiniciar deteccion de bucles infinitos para evitar falsos positivos
@@ -215,15 +214,15 @@ void prepararEjecucion() {
     registrosCpu.ac.signo = 0;
     registrosCpu.ac.digitos = 0;
 
-    printf("[LOADER] CPU preparado para ejecucion:\n");
-    printf("[LOADER]   RB=%d, RL=%d, PC=%d (logico)\n",
+    logLoader("CPU preparado para ejecucion:");
+    logLoader("  RB=%d, RL=%d, PC=%d (logico)",
            registrosCpu.rb, registrosCpu.rl, registrosCpu.psw.pc);
-    printf("[LOADER]   RX=%d, SP=%d\n",
+    logLoader("  RX=%d, SP=%d",
            registrosCpu.rx, registrosCpu.sp);
-} 
+}
 
 void reiniciarLoader() {
     siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO;
     limpiarProgramaActual();
-    printf("[LOADER] Loader reiniciado. Direccion base: %d\n", siguienteDireccionDisponible);
+    logLoader("Loader reiniciado. Direccion base: %d", siguienteDireccionDisponible);
 }

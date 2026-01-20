@@ -1,12 +1,7 @@
-/*
- * ============================================================================
- * ARCHIVO: main.c
- * DESCRIPCION: Punto de entrada principal de la maquina virtual.
- *              Implementa la consola interactiva para cargar y ejecutar
- *              programas en modo normal o debug.
- *              Segun especificaciones de prueba.txt seccion 6.
- * ============================================================================
- */
+// ARCHIVO: main.c
+// DESCRIPCION: Punto de entrada principal de la maquina virtual.
+//              Implementa la consola interactiva para cargar y ejecutar
+//              programas en modo normal o debug.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,17 +14,11 @@
 #include "../include/logger.h"
 #include "../include/cpu.h"
 
-/* ============================================================================
- * CONSTANTES DE LA CONSOLA
- * ============================================================================ */
-
+// CONSTANTES DE LA CONSOLA
 #define MAX_COMANDO 256     // Tamanio maximo de un comando
 #define MAX_RUTA 256        // Tamanio maximo de una ruta de archivo
 
-/* ============================================================================
- * VARIABLES GLOBALES
- * ============================================================================ */
-
+// VARIABLES GLOBALES
 // Modo de ejecucion: 0 = normal (run), 1 = debug
 int modoDebug = 0;
 
@@ -41,20 +30,14 @@ extern Registros registrosCpu;
 extern int cpuEjecutando;
 extern int contadorCiclos;
 
-/* ============================================================================
- * PROTOTIPOS DE FUNCIONES LOCALES
- * ============================================================================ */
-
+// PROTOTIPOS DE FUNCIONES LOCALES
 void mostrarBienvenida();
 void mostrarAyuda();
 void mostrarEstadoRegistros();
 int ejecutarModoNormal();
 int ejecutarModoDebug();
 
-/* ============================================================================
- * FUNCION PRINCIPAL
- * ============================================================================ */
-
+// FUNCION PRINCIPAL
 int main(int argc, char *argv[]) {
     char comando[MAX_COMANDO];
     char rutaArchivo[MAX_RUTA];
@@ -76,7 +59,7 @@ int main(int argc, char *argv[]) {
     
     // Inicializar todos los componentes de hardware
     // El sistema arranca en modo KERNEL para la inicializacion
-    printf("\n[SISTEMA] *** Modo KERNEL activado ***\n");
+    printf("\n[SISTEMA] Modo KERNEL activado \n");
     printf("[SISTEMA] Inicializando componentes de hardware...\n");
     inicializarMemoria();
     logSistema("Memoria inicializada (modo KERNEL)");
@@ -98,7 +81,7 @@ int main(int argc, char *argv[]) {
     // Cambiar a modo USUARIO despues de la inicializacion
     // Esto simula que el SO termino su arranque y pasa el control al usuario
     registrosCpu.psw.modoOperacion = MODO_USUARIO;
-    printf("[SISTEMA] *** Cambiando a modo USUARIO ***\n");
+    printf("[SISTEMA] Cambiando a modo USUARIO \n");
     logSistema("Sistema cambiado a modo USUARIO");
     printf("[SISTEMA] Sistema listo para operar.\n\n");
     
@@ -123,9 +106,7 @@ int main(int argc, char *argv[]) {
         
         logSistema("Comando recibido: %s", comando);
         
-        // ================================================================
         // PROCESAR COMANDOS
-        // ================================================================
         
         // Comando: salir / exit / quit
         if (strcmp(comando, "salir") == 0 || 
@@ -147,7 +128,6 @@ int main(int argc, char *argv[]) {
             strncpy(rutaArchivo, comando + 7, MAX_RUTA - 1);
             rutaArchivo[MAX_RUTA - 1] = '\0';
             
-            printf("\n[LOADER] Cargando programa: %s\n", rutaArchivo);
             logLoader("Iniciando carga de: %s", rutaArchivo);
             
             if (cargarPrograma(rutaArchivo) == 0) {
@@ -166,18 +146,14 @@ int main(int argc, char *argv[]) {
             if (!programaCargado) {
                 printf("ERROR: No hay programa cargado. Use 'cargar <archivo>' primero.\n\n");
             } else {
-                printf("\n========================================\n");
                 printf(" EJECUTANDO EN MODO NORMAL\n");
-                printf("========================================\n\n");
                 logSistema("Iniciando ejecucion en modo NORMAL");
                 
                 modoDebug = 0;
                 prepararEjecucion();
                 ejecutarModoNormal();
                 
-                printf("\n========================================\n");
-                printf(" EJECUCION FINALIZADA\n");
-                printf("========================================\n\n");
+                printf(" EJECUCION FINALIZADA\n\n");
                 logSistema("Ejecucion finalizada");
                 
                 // Programa terminado, permitir cargar otro
@@ -190,19 +166,15 @@ int main(int argc, char *argv[]) {
             if (!programaCargado) {
                 printf("ERROR: No hay programa cargado. Use 'cargar <archivo>' primero.\n\n");
             } else {
-                printf("\n========================================\n");
                 printf(" EJECUTANDO EN MODO DEBUG\n");
                 printf(" Comandos: [Enter]=siguiente, r=registros, h=ayuda, q=salir\n");
-                printf("========================================\n\n");
                 logSistema("Iniciando ejecucion en modo DEBUG");
                 
                 modoDebug = 1;
                 prepararEjecucion();
                 ejecutarModoDebug();
                 
-                printf("\n========================================\n");
-                printf(" EJECUCION FINALIZADA\n");
-                printf("========================================\n\n");
+                printf(" EJECUCION FINALIZADA\n\n");
                 logSistema("Ejecucion en debug finalizada");
                 
                 programaCargado = 0;
@@ -236,92 +208,62 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-/* ============================================================================
- * FUNCIONES DE INTERFAZ
- * ============================================================================ */
+// FUNCIONES DE INTERFAZ
 
-/*
- * mostrarBienvenida
- * -----------------
- * Muestra el mensaje de bienvenida de la maquina virtual.
- */
+// mostrarBienvenida()
+// Muestra el mensaje de bienvenida de la maquina virtual.
 void mostrarBienvenida() {
-    printf("╔══════════════════════════════════════════════════════════════╗\n");
-    printf("║                    MAQUINA VIRTUAL                           ║\n");
-    printf("║              Sistema Operativo - UCV 2024                    ║\n");
-    printf("╠══════════════════════════════════════════════════════════════╣\n");
-    printf("║  Escriba 'ayuda' para ver los comandos disponibles.          ║\n");
-    printf("╚══════════════════════════════════════════════════════════════╝\n");
+    printf(" MAQUINA VIRTUAL \n");
+    printf(" Sistema Operativo - UCV 2024 \n");
+    printf(" Escriba 'ayuda' para ver los comandos disponibles. \n");
 }
 
-/*
- * mostrarAyuda
- * ------------
- * Muestra la lista de comandos disponibles.
- */
+// mostrarAyuda()
+// Muestra la lista de comandos disponibles.
 void mostrarAyuda() {
     printf("\n");
-    printf("╔══════════════════════════════════════════════════════════════╗\n");
-    printf("║                   COMANDOS DISPONIBLES                       ║\n");
-    printf("╠══════════════════════════════════════════════════════════════╣\n");
-    printf("║  cargar <archivo>  - Carga un programa desde archivo         ║\n");
-    printf("║  run               - Ejecuta el programa en modo normal      ║\n");
-    printf("║  debug             - Ejecuta el programa paso a paso         ║\n");
-    printf("║  registros (reg)   - Muestra el estado de los registros      ║\n");
-    printf("║  ayuda (help)      - Muestra esta ayuda                      ║\n");
-    printf("║  salir (exit)      - Sale de la maquina virtual              ║\n");
-    printf("╚══════════════════════════════════════════════════════════════╝\n");
+    printf(" COMANDOS DISPONIBLES \n");
+    printf(" cargar <archivo>  - Carga un programa desde archivo         \n");
+    printf(" run               - Ejecuta el programa en modo normal      \n");
+    printf(" debug             - Ejecuta el programa paso a paso         \n");
+    printf(" registros (reg)   - Muestra el estado de los registros      \n");
+    printf(" ayuda (help)      - Muestra esta ayuda                      \n");
+    printf(" salir (exit)      - Sale de la maquina virtual              \n");
     printf("\n");
 }
 
-/*
- * mostrarEstadoRegistros
- * ----------------------
- * Muestra el estado actual de todos los registros del CPU.
- */
+// mostrarEstadoRegistros()
+// Muestra el estado actual de todos los registros del CPU.
 void mostrarEstadoRegistros() {
     printf("\n");
-    printf("╔══════════════════════════════════════════════════════════════╗\n");
-    printf("║                   REGISTROS DEL CPU                          ║\n");
-    printf("╠══════════════════════════════════════════════════════════════╣\n");
-    printf("║  AC  = %c%07d                                               ║\n",
+    printf(" REGISTROS DEL CPU \n");
+    printf(" AC  = %c%07d \n",
            registrosCpu.ac.signo ? '-' : '+', registrosCpu.ac.digitos);
-    printf("║  PC  = %05d (logico)                                        ║\n",
+    printf(" PC  = %05d (logico) \n",
            registrosCpu.psw.pc);
-    printf("║  MAR = %c%07d                                               ║\n",
+    printf(" MAR = %c%07d \n",
            registrosCpu.mar.signo ? '-' : '+', registrosCpu.mar.digitos);
-    printf("║  MDR = %c%07d                                               ║\n",
+    printf(" MDR = %c%07d \n",
            registrosCpu.mdr.signo ? '-' : '+', registrosCpu.mdr.digitos);
-    printf("╠══════════════════════════════════════════════════════════════╣\n");
-    printf("║  IR: Opcode=%02d  Modo=%d  Valor=%05d                         ║\n",
+    printf(" IR: Opcode=%02d  Modo=%d  Valor=%05d \n",
            registrosCpu.ir.codigoOperacion,
            registrosCpu.ir.direccionamiento,
            registrosCpu.ir.valor);
-    printf("╠══════════════════════════════════════════════════════════════╣\n");
-    printf("║  RB = %05d    RL = %05d                                     ║\n",
+    printf(" RB = %05d    RL = %05d \n",
            registrosCpu.rb, registrosCpu.rl);
-    printf("║  RX = %05d    SP = %05d                                     ║\n",
+    printf(" RX = %05d    SP = %05d \n",
            registrosCpu.rx, registrosCpu.sp);
-    printf("╠══════════════════════════════════════════════════════════════╣\n");
-    printf("║  PSW: CC=%d  Modo=%s  Int=%s                          ║\n",
+    printf(" PSW: CC=%d  Modo=%s  Int=%s \n",
            registrosCpu.psw.codigoCondicion,
            registrosCpu.psw.modoOperacion == MODO_KERNEL ? "KERNEL " : "USUARIO",
            registrosCpu.psw.habilitarInterrupciones ? "HAB  " : "DESHAB");
-    printf("╚══════════════════════════════════════════════════════════════╝\n");
     printf("\n");
 }
 
+// FUNCIONES DE EJECUCION
 
-
-/* ============================================================================
- * FUNCIONES DE EJECUCION
- * ============================================================================ */
-
-/*
- * ejecutarModoNormal
- * ------------------
- * Ejecuta el programa cargado en modo normal (sin pausas).
- */
+// ejecutarModoNormal()
+// Ejecuta el programa cargado en modo normal (sin pausas).
 int ejecutarModoNormal() {
     logCpu("Iniciando ejecucion en modo normal");
     
@@ -332,12 +274,8 @@ int ejecutarModoNormal() {
     return 0;
 }
 
-/*
- * ejecutarModoDebug
- * -----------------
- * Ejecuta el programa cargado en modo debug (paso a paso).
- * El usuario debe usar 's' o Enter para avanzar a la siguiente instruccion.
- */
+// ejecutarModoDebug()
+// Ejecuta el programa cargado en modo debug (paso a paso).
 int ejecutarModoDebug() {
     char entrada[MAX_COMANDO];
     int continuar = 1;
@@ -376,11 +314,10 @@ int ejecutarModoDebug() {
                 
                 // Procesar comando de debug
                 if (strlen(entrada) == 0 || entrada[0] == 's') {
-                    // Enter o 's': ejecutar siguiente instruccion
                     break;  // Salir del bucle de comandos para ejecutar
                     
                 } else if (entrada[0] == 'r' || strcmp(entrada, "reg") == 0) {
-                    // Mostrar registros (sin avanzar)
+                    // Mostrar registros
                     mostrarEstadoRegistros();
                     
                 } else if (entrada[0] == 'q' || strcmp(entrada, "salir") == 0) {
