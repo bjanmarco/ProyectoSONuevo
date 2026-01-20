@@ -5,16 +5,13 @@
 #include <time.h>
 #include "../include/logger.h"
 
-// Puntero al archivo de log
+// puntero al archivo 
 FILE *archivoLog = NULL;
 
-// Indica si el logger esta activo
+// indica si el logger esta activo  
 int loggerActivo = 0;
 
-// Contador de lineas de log
-int contadorLineasLog = 0;
-
-
+// esta funcion es solo para poder asignarle el nivel a su impresion correspondiente, usamos un switch sencillo
 static const char* obtenerNombreNivel(NivelLog nivel) {
     switch (nivel) {
         case LOG_CPU:           return "CPU";
@@ -29,43 +26,45 @@ static const char* obtenerNombreNivel(NivelLog nivel) {
     }
 }
 
+// para obtener el la hora actual
 static void obtenerTimestamp(char *buffer, int tamanio) {
-    time_t ahora;
-    struct tm *tiempoLocal;
+    time_t ahora; // se guarda la hora en segundos
+    struct tm *tiempoLocal; // se guarda la hora en forma local
     
-    time(&ahora);
-    tiempoLocal = localtime(&ahora);
+    time(&ahora); // se obtiene 
+    tiempoLocal = localtime(&ahora); // se convierte 
     
-    strftime(buffer, tamanio, "%H:%M:%S", tiempoLocal);
+    strftime(buffer, tamanio, "%H:%M:%S", tiempoLocal); // se obtiene la hora en formato de string 
+    // strftime es como un printf pero para tiempo
 }
 
 int inicializarLogger(const char *nombreArchivo) {
-    const char *archivo;
-    char timestamp[20];
+    const char *archivo; // nombre del archivo
+    char timestamp[20]; // hora actual
     
-    // Usar nombre por defecto si no se proporciona
+    // usar nombre por defecto si no se proporciona
     if (nombreArchivo == NULL || strlen(nombreArchivo) == 0) {
         archivo = ARCHIVO_LOG_DEFECTO;
     } else {
         archivo = nombreArchivo;
     }
     
-    // Abrir archivo en modo escritura (sobreescribe si existe)
+    // abrir archivo en modo escritura (sobreescribe si existe)
     archivoLog = fopen(archivo, "w");
     if (archivoLog == NULL) {
         printf("[LOGGER] ERROR: No se pudo abrir archivo de log: %s\n", archivo);
         return 1;
     }
     
-    // Marcar logger como activo
+    // marcar logger como activo
     loggerActivo = 1;
-    contadorLineasLog = 0;
     
-    // Escribir cabecera del log
+    // escribir cabecera del log
     obtenerTimestamp(timestamp, sizeof(timestamp));
     fprintf(archivoLog, " Iniciado: %s\n", timestamp);
     fprintf(archivoLog, " Archivo: %s\n", archivo);
-    fflush(archivoLog);
+    fflush(archivoLog); // con esta funcion se asegura que se escriba inmediatamente
+    // porque el logger debe ser inmediato
     printf("\n[LOGGER] Log creado: %s\n", archivo);
     
     return 0;
@@ -77,16 +76,15 @@ void finalizarLogger() {
     if (archivoLog != NULL && loggerActivo) {
         obtenerTimestamp(timestamp, sizeof(timestamp));
         
-        // Escribir pie del log
+        // escribir pie del log
         fprintf(archivoLog, " FIN DEL LOG\n");
         fprintf(archivoLog, " Finalizado: %s\n", timestamp);
-        fprintf(archivoLog, " Total lineas: %d\n", contadorLineasLog);
         
         fclose(archivoLog);
         archivoLog = NULL;
         loggerActivo = 0;
         
-        printf("[LOGGER] Log finalizado. Total lineas: %d\n", contadorLineasLog);
+        printf("[LOGGER] Log finalizado.\n");
     }
 }
 
@@ -95,38 +93,35 @@ void escribirLog(NivelLog nivel, const char *formato, ...) {
     char mensaje[MAX_MENSAJE_LOG];
     va_list args;
     
-    // Si el logger no esta activo, solo imprimir en consola
+    // si el logger no esta activo, solo imprimir en consola
     if (!loggerActivo || archivoLog == NULL) {
-        // Para interrupciones, siempre imprimir en stdout
+        // para interrupciones, siempre imprimir en pantalla
         if (nivel == LOG_INTERRUPCION) {
-            va_start(args, formato);
+            va_start(args, formato); // lista de args variables
             printf("[%s] ", obtenerNombreNivel(nivel));
             vprintf(formato, args);
             printf("\n");
-            va_end(args);
+            va_end(args); // finaliza la lista de args variables
         }
         return;
     }
     
-    // Obtener timestamp
     obtenerTimestamp(timestamp, sizeof(timestamp));
     
-    // Formatear el mensaje
-    va_start(args, formato);
-    vsnprintf(mensaje, MAX_MENSAJE_LOG, formato, args);
-    va_end(args);
+    // formatear el mensaje
+    va_start(args, formato); // lista de args variables
+    vsnprintf(mensaje, MAX_MENSAJE_LOG, formato, args); // es como un print pero del arreglo mensaje
+    va_end(args); // finaliza la lista de args variables
     
-    // Escribir en archivo de log
+    // escribir en archivo de log
     fprintf(archivoLog, "[%s][%s] %s\n", 
             timestamp, 
             obtenerNombreNivel(nivel), 
             mensaje);
-    fflush(archivoLog);  // Asegurar que se escriba inmediatamente
+    fflush(archivoLog);  // asegura que se escriba inmediatamente
     
-    contadorLineasLog++;
-    
-    // Las interrupciones tambien van a stdout (segun especificacion)
+    // las interrupciones tambien van en pantalla
     if (nivel == LOG_INTERRUPCION) {
-        printf("[%s][%s] %s\n", timestamp, obtenerNombreNivel(nivel), mensaje);
+        printf("[%s] %s\n", obtenerNombreNivel(nivel), mensaje);
     }
 }

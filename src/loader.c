@@ -1,3 +1,5 @@
+// este modulo lee los archivos de programa 
+// y los carga en la memoria RAM para que el CPU los pueda ejecutar.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,31 +9,34 @@
 #include "../include/logger.h"
 #include "../include/cpu.h"
 
-// Siguiente direccion de memoria disponible para cargar programas
-// Inicia en 300 (INICIO_MEMORIA_USUARIO)
+// siguiente direccion de memoria disponible para cargar programas
+// inicia en 300 
 int siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO;
 
-// Informacion del programa actualmente cargado
+// esta es el struct de la info el programa.
 InfoPrograma programaActual;
 
-// Referencia externa a los registros del CPU (definidos en cpu.c)
+// referencia externa a los registros del CPU (definidos en cpu.c)
 extern Registros registrosCpu;
 
-// Funcion externa para reiniciar deteccion de bucles (definida en cpu.c)
+// funcion externa para reiniciar deteccion de bucles (definida en cpu.c)
 extern void reiniciarDeteccionBucle();
 
 static void limpiarProgramaActual() {
+    // memeset es para llenar la memoria con 0 y asi borras lo que tenia antes
     memset(programaActual.nombre, 0, MAX_NOMBRE_PROGRAMA);
     programaActual.lineaInicio = 0;
     programaActual.numeroPalabras = 0;
     programaActual.direccionBase = 0;
     programaActual.direccionLimite = 0;
+    //y el struct queda listo para guarda la nueva info del siguiente programa
 }
 
 void inicializarLoader() {
-    siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO;
+    siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO; // partimos de la base del usuario
     limpiarProgramaActual();
     logLoader("Loader inicializado. Direccion base: %d", 
+    // usamos el Macro El atajo para imprimir el valor de la siguiente direccion disponible
            siguienteDireccionDisponible);
 }
 
@@ -42,108 +47,114 @@ int cargarPrograma(const char *rutaArchivo, int direccionDestino) {
     char nombrePrograma[MAX_NOMBRE_PROGRAMA] = "";
     Palabra instruccion;
     long valorInstruccion;
-    int resultado = 1;  // Por defecto error, cambia a 0 si todo sale bien
+    int resultado = 1;  // por defecto error, cambia a 0 si todo sale bien
 
-    // Buffer temporal para validar antes de escribir a memoria
+    // buffer temporal para validar antes de escribir a memoria
     Palabra *buffer = NULL;
     int bufferCap = 0, bufferLen = 0;
 
     logLoader("Intentando cargar: %s", rutaArchivo);
 
-    // Abrir el archivo
-    archivo = fopen(rutaArchivo, "r");
+    // abrir el archivo
+    archivo = fopen(rutaArchivo, "r"); // abrimos leyendo
     if (archivo == NULL) {
         logLoader("ERROR: No se pudo abrir el archivo %s", rutaArchivo);
         return 1;
     }
 
-    // Leer y validar el archivo (no escribir en memoria aún)
+    // leer y validar el archivo con while para que sea linea por linea (no escribir en memoria aún)
     while (fgets(linea, MAX_LINEA, archivo) != NULL) {
-        linea[strcspn(linea, "\n")] = '\0';  // Eliminar salto de linea
+        // fgets incluye el salto por eso luego se elimina
+        linea[strcspn(linea, "\n")] = '\0';  // eliminar salto de linea y lo cambia por un fin de cadena \0
 
-        // Ignorar lineas vacias y comentarios
+        // ignorar lineas vacias y comentarios
         if (strlen(linea) == 0 || linea[0] == '/' || linea[0] == '#') continue;
 
-        // Parsear _start
+        // parsear _start
+        // y bueno strncmp sirve para comparar strings le dices con que quiere comparar y hasta onde debe comparar
+        // si es igual entra al if, y si no error
         if (strncmp(linea, "_start", 6) == 0) {
             if (sscanf(linea, "_start %d", &lineaInicio) != 1) {
+                 // sscanf lee datos de una linea y los compara con lo que le pides
                 logLoader("ERROR: _start invalido");
-                goto cleanup;
+                goto cleanup; // si hay error salgo, pero antes libero todo lo que puse (salida correcta)
             }
             logLoader("_start = %d", lineaInicio);
             continue;
         }
 
-        // Parsear .NumeroPalabras
+        // parsear .NumeroPalabras
         if (strncmp(linea, ".NumeroPalabras", 15) == 0) {
             if (sscanf(linea, ".NumeroPalabras %d", &numeroPalabrasHeader) != 1) {
                 logLoader("ERROR: .NumeroPalabras invalido");
-                goto cleanup;
+                goto cleanup; // salida correcta
             }
             logLoader("NumeroPalabras (encabezado) = %d", numeroPalabrasHeader);
             continue;
         }
 
-        // Parsear .NombreProg
+        // parsear .NombreProg
         if (strncmp(linea, ".NombreProg", 11) == 0) {
             if (sscanf(linea, ".NombreProg %49s", nombrePrograma) != 1) {
                 logLoader("ERROR: .NombreProg invalido");
-                goto cleanup;
+                goto cleanup; // salida correcta
             }
             logLoader("NombreProg = %s", nombrePrograma);
             continue;
         }
 
-        // Detectar fin del programa (una linea con solo '.')
+        // detectar fin del programa (una linea con solo '.')
         if (linea[0] == '.' && strlen(linea) == 1) {
             logLoader("Fin del programa detectado");
             break;
         }
 
-        // Si llegamos aqui, esperamos una instruccion: cadena de digitos (hasta 8)
+        // si llegamos aqui, esperamos una instruccion (cadena de 8 digitos)
         int len = strlen(linea), i, ok = 1;
         for (i = 0; i < len; i++) {
             if (linea[i] < '0' || linea[i] > '9') { ok = 0; break; }
+            // porque las ir son de 8 digitos
         }
         if (!ok || len == 0 || len > 8) {
             logLoader("ERROR: Instruccion invalida en archivo: '%s'", linea);
-            goto cleanup;
+            goto cleanup; // salida correcta
         }
 
-        // Convertir la linea a entero largo
-        valorInstruccion = atol(linea);
+        // convertimos la linea a entero largo
+        valorInstruccion = atol(linea); // pasa string a long
         if (valorInstruccion < 0 || valorInstruccion > 99999999L) {
             logLoader("ERROR: Valor de instruccion fuera de rango: %ld", valorInstruccion);
-            goto cleanup;
+            goto cleanup; // salida correcta
         }
 
-        // Las instrucciones son positivas en este formato (8 digitos)
+        // las instrucciones son positivas
         instruccion.signo = 0;
         instruccion.digitos = (int)valorInstruccion;
 
-        // Agregar al buffer dinamico (expandir si es necesario)
-        if (bufferLen >= bufferCap) {
+        // agregar al buffer dinamico (expandir si es necesario)
+        if (bufferLen >= bufferCap) { // el len son las que llevamos y el cap las totales
             int nuevaCap = (bufferCap == 0) ? 16 : bufferCap * 2;
+            // si esta vacia le damos 16 y si no el doble
             Palabra *tmp = (Palabra*)realloc(buffer, nuevaCap * sizeof(Palabra));
             if (tmp == NULL) {
                 logLoader("ERROR: No hay memoria para buffer");
-                goto cleanup;
+                goto cleanup; // salida correcta
             }
-            buffer = tmp; bufferCap = nuevaCap;
+            buffer = tmp; bufferCap = nuevaCap; // actualizamos
         }
-        buffer[bufferLen++] = instruccion;
+        buffer[bufferLen++] = instruccion; // guatdamos y actualizamos el len
     }
 
     fclose(archivo);
-    archivo = NULL;  // Marcar como cerrado
+    archivo = NULL;  // marcar como cerrado
 
-    // Verificar que se leyeron instrucciones
+    // verificar que se leyeron instrucciones
     if (bufferLen == 0) {
         logLoader("ERROR: No se encontraron instrucciones");
         goto cleanup;
     }
 
-    // Determinar direccion base
+    // determinar direccion base
     int direccionBase;
     int modoManual = (direccionDestino != -1);
 
@@ -159,7 +170,7 @@ int cargarPrograma(const char *rutaArchivo, int direccionDestino) {
         direccionBase = siguienteDireccionDisponible;
     }
 
-    // Verificar espacio en memoria
+    // verificar espacio en memoria
     if (direccionBase + bufferLen >= TAMANO_MEMORIA) {
         logLoader("ERROR: Memoria insuficiente. Fin de programa (%d) excede memoria (%d)", 
                   direccionBase + bufferLen, TAMANO_MEMORIA);
@@ -167,10 +178,10 @@ int cargarPrograma(const char *rutaArchivo, int direccionDestino) {
         goto cleanup;
     }
 
-    // VERIFICACION DE COLISIONES
-    // Verificar si el rango de memoria objetivo ya tiene contenido (distinto de 0)
+    // verificacion de colisiones
+    // verificar si el rango de memoria objetivo ya tiene contenido (distinto de 0)
     int direccionFin = direccionBase + bufferLen;
-    // RESERVA DE PILA: Se prohibe cargar en las ultimas 50 posiciones
+    // reserva de pila: se prohibe cargar en las ultimas 50 posiciones
     // para garantizar espacio minimo para la pila del sistema.
     if (direccionFin > TAMANO_MEMORIA - 50) { 
         logLoader("ERROR: Intento de cargar en zona de PILA (1950-1999). Fin del programa: %d", direccionFin);
@@ -178,27 +189,27 @@ int cargarPrograma(const char *rutaArchivo, int direccionDestino) {
         goto cleanup;
     }
 
-    // Verificar si hay datos preexistentes en el rango
+    // verificar si hay datos preexistentes en el rango
     for (int k = 0; k < bufferLen; k++) {
         Palabra p = leerMemoria(direccionBase + k);
         if (p.digitos != 0 || p.signo != 0) {
             logLoader("ERROR: Memoria ocupada en direcccon %d. No se puede cargar.", direccionBase + k);
             printf("[LOADER] ERROR: Conflicto de memoria en direccion %d. Ya contiene datos.\n", direccionBase + k);
-            goto cleanup;
+            goto cleanup; // salto al final para cerrar el archivo
         }
     }
     if (numeroPalabrasHeader != -1 && numeroPalabrasHeader != bufferLen) {
         logLoader("ERROR: .NumeroPalabras (%d) no coincide con instrucciones leidas (%d)",
                numeroPalabrasHeader, bufferLen);
-        goto cleanup;
+        goto cleanup; // salto al final para cerrar el archivo
     }
-    // Validar _start (base 1, de 1 a bufferLen)
+    // validar _start (base 1, de 1 a bufferLen)
     if (lineaInicio < 1 || lineaInicio > bufferLen) {
         logLoader("ERROR: _start invalido o fuera de rango (debe ser 1..%d)", bufferLen);
-        goto cleanup;
+        goto cleanup; // salto al final para cerrar el archivo
     }
 
-    // Escribir buffer a memoria (commit)
+    // escribir buffer a memoria (commit)
     int i;
     // direccionBase ya fue calculada arriba
     for (i = 0; i < bufferLen; i++) {
@@ -207,13 +218,13 @@ int cargarPrograma(const char *rutaArchivo, int direccionDestino) {
                i, direccionBase + i, buffer[i].signo, buffer[i].digitos);
     }
 
-    // Guardar informacion del programa
+    // todo lo que se obtuvo despues e leer y validar se guarda en la estructura
     strncpy(programaActual.nombre, nombrePrograma, MAX_NOMBRE_PROGRAMA - 1);
     programaActual.nombre[MAX_NOMBRE_PROGRAMA - 1] = '\0';
     programaActual.lineaInicio = lineaInicio - 1;  // Convertir a base 0
     programaActual.numeroPalabras = bufferLen;
     programaActual.direccionBase = direccionBase;
-    programaActual.direccionLimite = direccionBase + bufferLen - 1;  // Ultima instruccion
+    programaActual.direccionLimite = direccionBase + bufferLen - 1;  // ultima instruccion
 
     logLoader("Programa '%s' cargado exitosamente", programaActual.nombre);
     logLoader("Instrucciones: %d, RB: %d, RL: %d, PC inicial: %d",
@@ -223,15 +234,16 @@ int cargarPrograma(const char *rutaArchivo, int direccionDestino) {
     if (!modoManual) {
         siguienteDireccionDisponible = direccionBase + bufferLen;
     } else {
-        // En modo manual, si cargamos "mas alla", podriamos actualizarla tambien para evitar huecos,
+        // en modo manual, si cargamos "mas alla", podriamos actualizarla tambien para evitar huecos,
         // pero mejor dejarlo intacto o moverlo al final de lo nuevo si es mayor.
         // Por simplicidad, si es manual, no movemos el puntero automatico a menos que lo supere.
         if (direccionBase + bufferLen > siguienteDireccionDisponible) {
             siguienteDireccionDisponible = direccionBase + bufferLen;
         }
     }
-    resultado = 0;  // Exito
+    resultado = 0;  // exito
 
+// usamos la salida correcta 
 cleanup:
     if (archivo != NULL) fclose(archivo);
     free(buffer);
@@ -265,8 +277,8 @@ void prepararEjecucion() {
     registrosCpu.ac.signo = 0;
     registrosCpu.ac.digitos = 0;
 
-    // LIMPIEZA DE ESTADO DE INTERRUPCIONES
-    // Es fundamental limpiar cualquier interrupcion pendiente de ejecuciones anteriores
+    // limpieza de estado de interrupciones
+    // es fundamental limpiar cualquier interrupcion pendiente de ejecuciones anteriores
     // (especialmente si terminaron por error fatal), de lo contrario se dispararian
     // en el primer ciclo del nuevo programa.
     interrupcionPendiente = 0;

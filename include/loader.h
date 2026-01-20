@@ -1,52 +1,44 @@
-// ARCHIVO: loader.h
-// El Portero.
-// Este modulo lee los archivos de programa (nuestros "ejecutables" de texto)
-// y los carga byte a byte en la memoria RAM para que el CPU los pueda ejecutar.
-
 #ifndef LOADER_H
 #define LOADER_H
 
 #include "hardware.h"
 
-// --- Constantes ---
-// Nombres de archivos y buffers.
-#define MAX_NOMBRE_PROGRAMA 50
-#define MAX_LINEA 100
+// constantes 
+#define MAX_NOMBRE_PROGRAMA 50 // tamanio max de un programa
+#define MAX_LINEA 100 // tamanio max de una linea
 
-// Struct para recordar que cargamos.
-// Necesitamos saber donde empieza (_start), cuantas lineas son,
+// struct para recordar que cargamos
+// necesitamos saber donde empieza (_start), cuantas lineas son,
 // y donde lo pusimos (RB/RL) para configurar el CPU antes de correr.
 typedef struct {
     char nombre[MAX_NOMBRE_PROGRAMA];   
-    int lineaInicio;                    // Aqui es donde salta el PC al empezar
-    int numeroPalabras;                 // Tamaño total del codigo
-    int direccionBase;                  // RB (Donde comienza en memoria FISICA)
-    int direccionLimite;                // RL (Donde termina)
+    int lineaInicio;                    // aqui es donde salta el PC al empezar
+    int numeroPalabras;                 // tamanio total del codigo
+    int direccionBase;                  // RB (donde comienza en memoria fisica)
+    int direccionLimite;                // RL (donde termina)
 } InfoPrograma;
 
-// --- Variables Globales ---
-
-// Puntero inteligente: recuerda cual es la proxima celda libre de RAM
+// variables globales
+// con esta variable recuerda cual es la proxima celda libre de RAM
 // para que si cargamos varios programas no se pisen entre ellos.
 extern int siguienteDireccionDisponible;
 
 extern InfoPrograma programaActual;
 
-// --- Funciones del Loader ---
+// funciones del Loader
 
-// Reinicia el puntero de "proxima direccion libre" (normalmente a 300).
+// reinicia el puntero de "proxima direccion libre" (normalmente a 300).
 void inicializarLoader();
 
-// La funcion heavy.
-// 1. Abre el archivo.
-// 2. Lee linea por linea (metadata y codigo).
-// 3. Escribe en memoriaPrincipal[].
-// 4. Si direccionDestino es -1, decide el solo donde ponerlo (modo automatico).
+// la funcion central
+// abre el archivo.
+// lee linea por linea
+// escribe en memoriaPrincipal
+// si direccionDestino es -1, decide el solo donde ponerlo
 int cargarPrograma(const char *rutaArchivo, int direccionDestino);
 
-// Configura los registros del CPU (PC, RB, RL, SP) usando la info
-// del ultimo programa que cargamos. Deja todo listo para el comando 'run'.
+// configura los registros del CPU (PC, RB, RL, SP) usando la info
+// del ultimo programa que cargamos deja todo listo para ejecutar
 void prepararEjecucion();
-
 
 #endif 

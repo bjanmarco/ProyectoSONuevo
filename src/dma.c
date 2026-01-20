@@ -1,3 +1,5 @@
+// este modulo es como un ayudante del CPU para escribir y leer datos entre memoria y disco
+// en paralelo para que el CPU pueda seguir haciendo otras cosas
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
@@ -6,25 +8,26 @@
 #include "../include/disco.h"
 #include "../include/memoria.h"
 
-// Controlador DMA
+// es la estructura de control del DMA (registros de que copiar a donde).
 ControladorDma dma;
 
-// Bandera de interrupcion pendiente (1 = pendiente, 0 = no)
+// bandera de interrupcion pendiente (1 = pendiente, 0 = no)
 int interrupcionPendienteDma = 0;
 
-// Funcion auxiliar para finalizar transferencia con error
+// funcion auxiliar para finalizar transferencia con error
 static void finalizarConError() {
-    dma.estado = 1;
-    dma.ocupado = 0;
+    dma.estado = 1; // marca error
+    dma.ocupado = 0; // libera
     interrupcionPendienteDma = 1;
 }
 
+// es la funcion principal que corre en un hilo para no congelar la maquina
 void *hiloTransferenciaDma(void *arg) {
     char bufferSector[TAMANO_SECTOR];
     int resultado, i, valorEntero;
     Palabra palabraTemp;
     (void)arg;
-    
+    // muestra los detalles
     printf("[DMA] Hilo iniciado - Pista=%d, Cilindro=%d, Sector=%d, Dir=%d, Mem=%d\n",
            dma.pistaSeleccionada, dma.cilindroSeleccionado, dma.sectorSeleccionado,
            dma.direccionIo, dma.direccionMemoria);
@@ -42,12 +45,12 @@ void *hiloTransferenciaDma(void *arg) {
             return NULL;
         }
         
-        // Convertir caracteres a entero
+        // convertir caracteres a entero
         valorEntero = 0;
         for (i = 0; i < TAMANO_SECTOR && bufferSector[i] != '\0'; i++) {
             if (bufferSector[i] >= '0' && bufferSector[i] <= '9')
                 valorEntero = valorEntero * 10 + (bufferSector[i] - '0');
-        }
+        } // recorre el buffer y convierte los caracteres a entero
         palabraTemp = enteroAPalabra(valorEntero);
         escribirMemoria(dma.direccionMemoria, palabraTemp);
         printf("[DMA] Datos transferidos a memoria[%d]: %d\n", dma.direccionMemoria, valorEntero);
@@ -60,13 +63,13 @@ void *hiloTransferenciaDma(void *arg) {
         valorEntero = palabraAEntero(palabraTemp);
         printf("[DMA] Dato leido de memoria[%d]: %d\n", dma.direccionMemoria, valorEntero);
         
-        // Convertir entero a string con signo
+        // convertir entero a string con signo
         bufferSector[0] = (valorEntero < 0) ? '-' : '+';
         if (valorEntero < 0) valorEntero = -valorEntero;
         for (i = TAMANO_SECTOR - 1; i >= 1; i--) {
             bufferSector[i] = '0' + (valorEntero % 10);
             valorEntero /= 10;
-        }
+        } // conierte el entero al formato de la maquina (palabra)
         
         resultado = escribirSectorDisco(dma.pistaSeleccionada, dma.cilindroSeleccionado,
                                         dma.sectorSeleccionado, bufferSector);
@@ -79,12 +82,13 @@ void *hiloTransferenciaDma(void *arg) {
     }
     
     dma.ocupado = 0;
-    interrupcionPendienteDma = 1;
+    interrupcionPendienteDma = 1; // levanta la bandera de interrupcion
     printf("[DMA] Transferencia completada - Estado: %s\n", dma.estado == 0 ? "EXITO" : "ERROR");
     printf("[DMA] Interrupcion INT_IO_DONE generada\n");
     return NULL;
 }
 
+// pone todo en cero listo para usar
 void inicializarDma() {
     dma.pistaSeleccionada = 0;
     dma.cilindroSeleccionado = 0;
@@ -105,15 +109,17 @@ void iniciarTransferenciaDma() {
     dma.ocupado = 1;
     printf("[DMA] Iniciando transferencia en hilo separado...\n");
     
+    // crea un hilo nuevo de verdad
     if (pthread_create(&dma.hiloId, NULL, hiloTransferenciaDma, NULL) != 0) {
         printf("[DMA] ERROR: No se pudo crear el hilo de transferencia\n");
         finalizarConError();
         return;
     }
-    pthread_detach(dma.hiloId);
+    pthread_detach(dma.hiloId); 
+    // es para que el hilo se limpie solo cuando termine, sin que el CPU tenga que hacerlo
 }
 
-int verificarInterrupcionDma() {
-    return interrupcionPendienteDma;
+int verificarInterrupcionDma() { // devuelve el valor de la bandera de interrupcion
+    return interrupcionPendienteDma; // para que el CPU sepa si debe prestar atencion al DMA
 }
 

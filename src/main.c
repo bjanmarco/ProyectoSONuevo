@@ -1,8 +1,5 @@
-// ARCHIVO: main.c
-// DESCRIPCION: Punto de entrada principal de la maquina virtual.
-//              Implementa la consola interactiva para cargar y ejecutar
-//              programas en modo normal o debug.
-
+// punto de entrada principal de la maquina virtual
+// implementa la consola interactiva para cargar y ejecutar programas en modo normal o debug
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,50 +11,47 @@
 #include "../include/logger.h"
 #include "../include/cpu.h"
 
-// CONSTANTES DE LA CONSOLA
-#define MAX_COMANDO 256     // Tamanio maximo de un comando
-#define MAX_RUTA 256        // Tamanio maximo de una ruta de archivo
+// constantes de la consola
+#define MAX_COMANDO 256     // tamanio maximo de un comando
+#define MAX_RUTA 256        // tamanio maximo de una ruta de archivo
 
-// VARIABLES GLOBALES
-// Modo de ejecucion: 0 = normal (run), 1 = debug
+// variables globales
+// modo de ejecucion: 0 = normal (run), 1 = debug
 int modoDebug = 0;
 
-// Indica si hay un programa cargado listo para ejecutar
+// indica si hay un programa cargado listo para ejecutar
 int programaCargado = 0;
 
-// Referencias externas a registros y variables del CPU
+// referencias externas a registros y variables del CPU
 extern Registros registrosCpu;
 extern int cpuEjecutando;
 extern int contadorCiclos;
 
-// PROTOTIPOS DE FUNCIONES LOCALES
+// prototipos de funciones locales
 void mostrarAyuda();
 void mostrarEstadoRegistros();
 int ejecutarModoNormal();
 int ejecutarModoDebug();
 
-// FUNCION PRINCIPAL
+// funcion principal
 int main(int argc, char *argv[]) {
     char comando[MAX_COMANDO];
     char rutaArchivo[MAX_RUTA];
     int salir = 0;
     
-    // Ignorar argumentos por ahora
+    // ignorar argumentos por ahora
     (void)argc;
     (void)argv;
     
-    // Mostrar bienvenida
-    // (Bienvenida eliminada por solicitud del usuario)
-    
-    // Inicializar el logger
+    // inicializar el logger
     if (inicializarLogger("maquina_virtual.log") != 0) {
         printf("ERROR: No se pudo inicializar el logger\n");
         return 1;
     }
     logSistema("Maquina virtual iniciada");
     
-    // Inicializar todos los componentes de hardware
-    // Inicializar todos los componentes de hardware (Simulacion de Bootstrap)
+    // inicializar todos los componentes de hardware
+    // inicializar todos los componentes de hardware (Simulacion de Bootstrap)
     printf("\n INICIANDO BOOTSTRAP DEL SO \n\n");
     printf("[BOOTSTRAP] Cargando nucleo y componentes\n");
     
@@ -78,39 +72,39 @@ int main(int argc, char *argv[]) {
     
     printf("[BOOTSTRAP] Componentes de hardware verificados OK.\n");
     
-    // Cambiar a modo USUARIO
+    // cambiar a modo USUARIO
     registrosCpu.psw.modoOperacion = MODO_USUARIO;
     logSistema("Sistema cambiado a modo USUARIO");
     
     printf("[BOOTSTRAP] Sistema Operativo listo. Sesion de usuario iniciada.\n");
     
-    // Mostrar comandos disponibles antes de dar control
+    // mostrar comandos disponibles antes de dar control
     mostrarAyuda();
     
-    // Bucle principal de la consola
+    // bucle principal de la consola
     while (!salir) {
-        // Mostrar prompt
+        // mostrar prompt
         printf("MV> ");
         fflush(stdout);
         
-        // Leer comando
+        // leer comando
         if (fgets(comando, MAX_COMANDO, stdin) == NULL) {
             break;
         }
         
-        // Eliminar salto de linea
+        // eliminar salto de linea
         comando[strcspn(comando, "\n")] = '\0';
         
-        // Ignorar comandos vacios
+        // ignorar comandos vacios
         if (strlen(comando) == 0) {
             continue;
         }
         
         logSistema("Comando recibido: %s", comando);
         
-        // PROCESAR COMANDOS
+        // procesar comandos
         
-        // Comando: salir / exit / quit
+        // comando: salir / exit / quit
         if (strcmp(comando, "salir") == 0 || 
             strcmp(comando, "exit") == 0 || 
             strcmp(comando, "quit") == 0) {
@@ -119,13 +113,13 @@ int main(int argc, char *argv[]) {
             logSistema("Usuario solicito salir");
         }
         
-        // Comando: ayuda / help
+        // comando: ayuda / help
         else if (strcmp(comando, "ayuda") == 0 || 
                  strcmp(comando, "help") == 0) {
             mostrarAyuda();
         }
         
-        // Comando: cargar <archivo> [direccion]
+        // comando: cargar <archivo> [direccion]
         else if (strncmp(comando, "cargar ", 7) == 0) {
             char rutTemp[MAX_RUTA];
             int dirTemp = -1;
@@ -151,7 +145,7 @@ int main(int argc, char *argv[]) {
             }
         }
         
-        // Comando: run (ejecutar en modo normal)
+        // comando: run (ejecutar en modo normal)
         else if (strcmp(comando, "run") == 0) {
             if (!programaCargado) {
                 printf("ERROR: No hay programa cargado. Use 'cargar <archivo>' primero.\n\n");
@@ -167,12 +161,12 @@ int main(int argc, char *argv[]) {
                 printf("[SISTEMA] Ejecucion finalizada.\n\n");
                 logSistema("Ejecucion finalizada");
                 
-                // Programa terminado, permitir cargar otro
+                // programa terminado, permitir cargar otro
                 programaCargado = 0;
             }
         }
         
-        // Comando: debug (ejecutar en modo debug)
+        // comando: debug (ejecutar en modo debug)
         else if (strcmp(comando, "debug") == 0) {
             if (!programaCargado) {
                 printf("ERROR: No hay programa cargado. Use 'cargar <archivo>' primero.\n\n");
@@ -192,7 +186,7 @@ int main(int argc, char *argv[]) {
             }
         }
         
-        // Comando: registros / reg
+        // comando: registros / reg
         else if (strcmp(comando, "registros") == 0 || 
                  strcmp(comando, "reg") == 0) {
             mostrarEstadoRegistros();
@@ -200,14 +194,14 @@ int main(int argc, char *argv[]) {
         
 
         
-        // Comando no reconocido
+        // comando no reconocido
         else {
             printf("Comando no reconocido: '%s'\n", comando);
             printf("Escriba 'ayuda' para ver los comandos disponibles.\n\n");
         }
     }
     
-    // Finalizar componentes
+    // finalizar componentes
     printf("\n[SISTEMA] Finalizando maquina virtual...\n");
     logSistema("Finalizando maquina virtual");
     
@@ -219,9 +213,8 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-// FUNCIONES DE INTERFAZ
-// mostrarAyuda()
-// Muestra la lista de comandos disponibles.
+// funciones de interfaz
+// muestra la lista de comandos disponibles.
 void mostrarAyuda() {
     printf("\n");
     printf(" COMANDOS DISPONIBLES \n");
@@ -234,8 +227,7 @@ void mostrarAyuda() {
     printf("\n");
 }
 
-// mostrarEstadoRegistros()
-// Muestra el estado actual de todos los registros del CPU.
+// muestra el estado actual de todos los registros del CPU.
 void mostrarEstadoRegistros() {
     printf("\n");
     printf(" REGISTROS DEL CPU \n");
@@ -262,22 +254,20 @@ void mostrarEstadoRegistros() {
     printf("\n");
 }
 
-// FUNCIONES DE EJECUCION
+// funciones de ejecucion
 
-// ejecutarModoNormal()
-// Ejecuta el programa cargado en modo normal (sin pausas).
+// ejecuta el programa cargado en modo normal (sin pausas)
 int ejecutarModoNormal() {
     logCpu("Iniciando ejecucion en modo normal");
     
-    // Llamar a la funcion ejecutarCpu() del modulo cpu.c
+    // llamar a la funcion ejecutarCpu() del modulo cpu.c
     ejecutarCpu();
     
     logCpu("Ejecucion normal finalizada");
     return 0;
 }
 
-// ejecutarModoDebug()
-// Ejecuta el programa cargado en modo debug (paso a paso).
+// ejecuta el programa cargado en modo debug (paso a paso).
 int ejecutarModoDebug() {
     char entrada[MAX_COMANDO];
     int continuar = 1;
@@ -287,11 +277,11 @@ int ejecutarModoDebug() {
     
     cpuEjecutando = 1;
     
-    // Bucle principal del debugger
+    // bucle principal del debugger
     while (cpuEjecutando && continuar) {
         direccionFisica = registrosCpu.psw.pc + registrosCpu.rb;
 
-        // Mostrar informacion de la instruccion PROXIMA a ejecutar
+        // mostrar informacion de la instruccion proxima a ejecutar
         printf("──────────────────────────────────────────────\n");
         printf(" Proxima instruccion:\n");
         printf(" PC (logico): %05d  |  Dir Fisica: %05d\n",
@@ -302,7 +292,7 @@ int ejecutarModoDebug() {
                registrosCpu.psw.codigoCondicion);
         printf("──────────────────────────────────────────────\n");
         
-        // Bucle para procesar comandos hasta que el usuario quiera avanzar
+        // bucle para procesar comandos hasta que el usuario quiera avanzar
             while (1) {
                 printf("[DEBUG] > ");
                 fflush(stdout);
@@ -314,23 +304,23 @@ int ejecutarModoDebug() {
                 
                 entrada[strcspn(entrada, "\n")] = '\0';
                 
-                // Procesar comando de debug
+                // procesar comando de debug
                 if (strlen(entrada) == 0 || entrada[0] == 's') {
                     break;  // Salir del bucle de comandos para ejecutar
                     
                 } else if (entrada[0] == 'r' || strcmp(entrada, "reg") == 0) {
-                    // Mostrar registros
+                    // mostrar registros
                     mostrarEstadoRegistros();
                     
                 } else if (entrada[0] == 'q' || strcmp(entrada, "salir") == 0) {
-                    // Salir del debug
+                    // salir del debug
                     printf("[DEBUG] Deteniendo ejecucion.\n");
                     continuar = 0;
                     cpuEjecutando = 0;
                     break;
                     
                 } else if (entrada[0] == 'h' || entrada[0] == '?') {
-                    // Mostrar ayuda del debug
+                    // mostrar ayuda del debug
                     printf("\n[DEBUG] Comandos disponibles:\n");
                     printf("  [Enter] / s - Ejecutar siguiente instruccion\n");
                     printf("  r           - Mostrar registros del CPU\n");
@@ -338,23 +328,23 @@ int ejecutarModoDebug() {
                     printf("  q           - Salir del modo debug\n\n");
                     
                 } else {
-                    // Comando no reconocido
+                    // comando no reconocido
                     printf("[DEBUG] Comando no reconocido. Use 'h' para ayuda.\n");
                 }
             }
         
-        // Si el usuario quiere salir, no ejecutar mas
+        // si el usuario quiere salir, no ejecutar mas
         if (!continuar || !cpuEjecutando) {
             break;
         }
         
-        // Ejecutar un ciclo de CPU
+        // ejecutar un ciclo de CPU
         if (!cicloCpu()) {
             printf("\n[DEBUG] Programa finalizado.\n");
             break;
         }
         
-        // Mostrar instruccion que se acaba de ejecutar
+        // mostrar instruccion que se acaba de ejecutar
         printf(" >> Ejecutado: Op=%02d Dir=%d Val=%05d\n",
                registrosCpu.ir.codigoOperacion,
                registrosCpu.ir.direccionamiento,

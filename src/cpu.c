@@ -1,11 +1,6 @@
-/*
- * ============================================================================
- * ARCHIVO: cpu.c
- * DESCRIPCION: Implementacion del CPU de la maquina virtual.
- *              Contiene el ciclo de instruccion y manejo de interrupciones.
- * ============================================================================
- */
-
+// aqui definimos todo lo que tiene que ver con el cerebro de la maquina (el CPU)
+// estan las estructuras para guardar el estado y todas las funciones que necesitamos
+// para que el procesador entienda y ejecute las instrucciones
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,31 +11,29 @@
 #include "../include/dma.h"
 #include "../include/logger.h"
 
-// Bandera que indica si el CPU esta ejecutando
+// bandera que indica si el CPU esta ejecutando
 int cpuEjecutando = 0;
 
-// Variables para deteccion de bucles infinitos (JMP .)
+// variables para deteccion de bucles infinitos
 static int lastPC = -1;
 static int repetitionCount = 0;
 
-// Funcion para reiniciar la deteccion de bucles (llamada desde loader)
+// funcion para reiniciar la deteccion de bucles
 void reiniciarDeteccionBucle() {
     lastPC = -1;
     repetitionCount = 0;
 }
 
-// Contador de ciclos para interrupciones de reloj
+// contador de ciclos para interrupciones de reloj
 int contadorCiclos = 0;
 
-
-// Intervalo para generar interrupcion de reloj (0 = deshabilitado)
+// intervalo para generar interrupcion de reloj (0 = deshabilitado)
 int intervaloReloj = 0;
 
-
-// Bandera de interrupcion pendiente
+// bandera de interrupcion pendiente
 int interrupcionPendiente = 0;
 
-// Codigo de la interrupcion pendiente
+// codigo de la interrupcion pendiente
 int codigoInterrupcionPendiente = -1;
 
 Registros registrosCpu;
@@ -48,28 +41,26 @@ Registros registrosCpu;
 int palabraAEntero(Palabra p) {
     int valor = p.digitos;
     if (p.signo == 1) {
-        valor = -valor;  // Aplicar signo negativo
+        valor = -valor;  // aplicar signo negativo
     }
     return valor;
 }
 
-/*
- * Convierte un entero con signo a una Palabra (signo-magnitud).
- */
+// convierte un entero con signo a una palabra (signo-magnitud)
 Palabra enteroAPalabra(int val) {
     Palabra p;
     if (val < 0) {
-        p.signo = 1;         // Negativo
-        p.digitos = -val;    // Magnitud absoluta
+        p.signo = 1;         // negativo
+        p.digitos = -val;    // magnitud absoluta
     } else {
-        p.signo = 0;         // Positivo
+        p.signo = 0;         // positivo
         p.digitos = val;
     }
-    // Verificar overflow (maximo 8 digitos = 99999999)
-    // Se requiere 8 digitos para instrucciones como JMP (27000000)
+    // verificar overflow 
+    // se requiere 8 digitos para instrucciones como JMP
     if (p.digitos > 99999999) {
         p.digitos = 99999999;
-        // Actualizar codigo de condicion a DESBORDAMIENTO (CC=3)
+        // actualizar codigo de condicion a desbordamiento
         registrosCpu.psw.codigoCondicion = CC_DESBORDAMIENTO;
         interrupcionPendiente = 1;
         codigoInterrupcionPendiente = INT_OVERFLOW;
@@ -77,30 +68,10 @@ Palabra enteroAPalabra(int val) {
     return p;
 }
 
-// Muestra mensajes en el log (y consola si es critico/debug)
+// muestra mensajes en el log
 void imprimirLog(const char *mensaje) {
-    // Usamos logCpu para que vaya al archivo .log
-    // Se incluye el ciclo actual para contexto
+    // se incluye el ciclo actual para contexto
     logCpu("[Ciclo %d] %s", contadorCiclos, mensaje);
-}
-
-void imprimirEstadoCpu() {
-    printf("\n========== ESTADO DEL CPU ==========\n");
-    printf("AC:  %s%07d\n", registrosCpu.ac.signo ? "-" : "+", registrosCpu.ac.digitos);
-    printf("PC:  %05d (logico)\n", registrosCpu.psw.pc);
-    printf("MAR: %s%07d\n", registrosCpu.mar.signo ? "-" : "+", registrosCpu.mar.digitos);
-    printf("MDR: %s%07d\n", registrosCpu.mdr.signo ? "-" : "+", registrosCpu.mdr.digitos);
-    printf("IR:  Op=%02d Dir=%d Val=%05d\n", 
-           registrosCpu.ir.codigoOperacion,
-           registrosCpu.ir.direccionamiento,
-           registrosCpu.ir.valor);
-    printf("RB:  %05d  RL: %05d\n", registrosCpu.rb, registrosCpu.rl);
-    printf("RX:  %05d  SP: %05d\n", registrosCpu.rx, registrosCpu.sp);
-    printf("PSW: CC=%d Modo=%s Int=%s\n",
-           registrosCpu.psw.codigoCondicion,
-           registrosCpu.psw.modoOperacion == MODO_KERNEL ? "KERNEL" : "USUARIO",
-           registrosCpu.psw.habilitarInterrupciones ? "HAB" : "DESHAB");
-    printf("=====================================\n\n");
 }
 
 int traducirDireccion(int direccionLogica) {
@@ -110,16 +81,14 @@ int traducirDireccion(int direccionLogica) {
     return direccionLogica + registrosCpu.rb;
 }
 
-/*
- * Verifica proteccion de memoria (solo en modo usuario).
- * Retorna 1 si es valida, 0 si viola proteccion.
- */
+// verifica proteccion de memoria (solo en modo usuario).
+// retorna 1 si es valida, 0 si viola proteccion.
 int verificarProteccionMemoria(int direccionFisica) {
-    // En modo kernel no se verifica proteccion
+    // en modo kernel no se verifica proteccion
     if (registrosCpu.psw.modoOperacion == MODO_KERNEL) {
         return 1;
     }
-    // En modo usuario: RB <= direccion_fisica <= RL
+    // en modo usuario RB es menor o igual a direccion_fisica y, direccion_fisica es menor o igual a RL
     if (direccionFisica >= registrosCpu.rb && direccionFisica <= registrosCpu.rl) {
         return 1;
     }
@@ -127,27 +96,27 @@ int verificarProteccionMemoria(int direccionFisica) {
 }
 
 int esInstruccionPrivilegiada(int opcode) {
-    // Instrucciones de usuario
-    if (opcode >= 0 && opcode <= 5) return 0;   // Aritmeticas y transferencia
-    if (opcode >= 8 && opcode <= 13) return 0;  // Comparacion, saltos, SVC
-    if (opcode >= 25 && opcode <= 27) return 0; // Pila y salto incondicional
-    // Todo lo demas es privilegiado
+    // instrucciones de usuario
+    if (opcode >= 0 && opcode <= 5) return 0;   // aritmeticas y transferencia
+    if (opcode >= 8 && opcode <= 13) return 0;  // comparacion, saltos, SVC
+    if (opcode >= 25 && opcode <= 27) return 0; // pila y salto incondicional
+    // todo lo demas es privilegiado
     return 1;
 }
 
 int verificarDireccionSalto(int direccionLogica) {
     int direccionFisica;
     
-    // En modo kernel no se verifica
+    // en modo kernel no se verifica
     if (registrosCpu.psw.modoOperacion == MODO_KERNEL) {
-        return 1;
+        return 1; 
     }
     
-    // Traducir a direccion fisica
+    // traducir a direccion fisica
     direccionFisica = traducirDireccion(direccionLogica);
     
-    // Verificar que este dentro de los limites del programa
-    // RB <= direccion_fisica <= RL
+    // verificar que este dentro de los limites del programa
+    // RB es menor o igual a direccion_fisica y, direccion_fisica es menor o igual a RL
     if (direccionFisica >= registrosCpu.rb && direccionFisica <= registrosCpu.rl) {
         return 1;
     }
@@ -155,74 +124,75 @@ int verificarDireccionSalto(int direccionLogica) {
     return 0;
 }
 
+// actualiza el codigo de condicion segun el resultado de una operacion
 void actualizarCodigoCondicion(int resultado) {
     if (resultado > 9999999 || resultado < -9999999) {
-        registrosCpu.psw.codigoCondicion = CC_DESBORDAMIENTO;
+        registrosCpu.psw.codigoCondicion = CC_DESBORDAMIENTO; // si pas el limite
     } else if (resultado == 0) {
-        registrosCpu.psw.codigoCondicion = CC_CERO;
+        registrosCpu.psw.codigoCondicion = CC_CERO; // si es cero
     } else if (resultado < 0) {
-        registrosCpu.psw.codigoCondicion = CC_NEGATIVO;
+        registrosCpu.psw.codigoCondicion = CC_NEGATIVO; // si es negativo
     } else {
-        registrosCpu.psw.codigoCondicion = CC_POSITIVO;
+        registrosCpu.psw.codigoCondicion = CC_POSITIVO; // si es positivo
     }
 }
 
 Palabra codificarPsw() {
-    int valor = registrosCpu.psw.codigoCondicion * 10000000 +
-                registrosCpu.psw.modoOperacion * 1000000 +
-                registrosCpu.psw.habilitarInterrupciones * 100000 +
-                registrosCpu.psw.pc;
+    // se hace la multiplicacion para ponerlo en la posicion mas a la izquierda
+    int valor = registrosCpu.psw.codigoCondicion * 10000000 + // 8va posicion
+                registrosCpu.psw.modoOperacion * 1000000 + // 7ma posicion
+                registrosCpu.psw.habilitarInterrupciones * 100000 + // 6ta posicion
+                registrosCpu.psw.pc; // 5 ultimos digitos
     return enteroAPalabra(valor);
 }
 
 void decodificarPsw(Palabra pswPalabra) {
     int valor = palabraAEntero(pswPalabra);
-    // Asegurar que el valor sea positivo
+    // asegurar que el valor sea positivo
     if (valor < 0) {
         valor = -valor;
     }
-    // Extraer campos (8 digitos: CCMIPPPP)
-    registrosCpu.psw.pc = valor % 100000;  // Ultimos 5 digitos
+    // extraer campos 
+    registrosCpu.psw.pc = valor % 100000;  // ultimos 5 digitos
     registrosCpu.psw.habilitarInterrupciones = (valor / 100000) % 10;  // 6to digito
     registrosCpu.psw.modoOperacion = (valor / 1000000) % 10;  // 7mo digito
     registrosCpu.psw.codigoCondicion = (valor / 10000000) % 10;  // 8vo digito
 }
 
-/*
- * Obtiene el operando segun el modo de direccionamiento.
- */
+// obtiene el operando segun el modo de direccionamiento.
 Palabra obtenerOperando(int modo, int valor) {
     Palabra operando;
     int direccionFisica;
     
-    switch (modo) {
+    switch (modo) { // switch para obtener el operando segun el modo de direccionamiento
         case DIR_DIRECTO:
-            // El valor es una direccion logica
+            // el valor es una direccion logica
             direccionFisica = traducirDireccion(valor);
-            if (!verificarProteccionMemoria(direccionFisica)) {
-                interrupcionPendiente = 1;
-                codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
+            if (!verificarProteccionMemoria(direccionFisica)) { // si la direccion pertenece al programa
+                interrupcionPendiente = 1; 
+                codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA; // si no levanta una interrupcion
                 operando = enteroAPalabra(0);
                 return operando;
             }
-            operando = leerMemoria(direccionFisica);
+            operando = leerMemoria(direccionFisica); // si todo esta bien ve a memoria y trae el dato
             break;
             
         case DIR_INMEDIATO:
-            // El valor es el dato directamente
+            // el valor es el dato directamente
             operando = enteroAPalabra(valor);
             break;
             
         case DIR_INDEXADO:
-            // El valor es un indice desde AC
+            // el valor es un indice desde AC
             direccionFisica = traducirDireccion(valor + palabraAEntero(registrosCpu.ac));
+            // la suma pasa a ser una direccion 
             if (!verificarProteccionMemoria(direccionFisica)) {
                 interrupcionPendiente = 1;
-                codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
+                codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA; // si no levanta una interrupcion
                 operando = enteroAPalabra(0);
                 return operando;
             }
-            operando = leerMemoria(direccionFisica);
+            operando = leerMemoria(direccionFisica); // si todo esta bien ve a memoria y trae el dato
             break;
             
         default:
@@ -235,82 +205,75 @@ Palabra obtenerOperando(int modo, int valor) {
 void inicializarCpu() {
     imprimirLog("Inicializando CPU...");
     
-    // Inicializar acumulador a 0
+    // inicializar acumulador a 0
     registrosCpu.ac.signo = 0;
     registrosCpu.ac.digitos = 0;
     
-    // Inicializar MAR y MDR a 0
+    // inicializar MAR y MDR a 0
     registrosCpu.mar.signo = 0;
     registrosCpu.mar.digitos = 0;
     registrosCpu.mdr.signo = 0;
     registrosCpu.mdr.digitos = 0;
     
-    // Inicializar IR
+    // inicializar IR
     registrosCpu.ir.codigoOperacion = 0;
     registrosCpu.ir.direccionamiento = 0;
     registrosCpu.ir.valor = 0;
     
-    // Inicializar registros de proteccion de memoria
+    // inicializar registros de proteccion de memoria
     // NOTA: Estos se establecen cuando se carga un programa
     registrosCpu.rb = INICIO_MEMORIA_USUARIO;  // 300
     registrosCpu.rl = TAMANO_MEMORIA - 1;      // 1999
     
-    // Inicializar pila al final de la memoria
-    registrosCpu.rx = TAMANO_MEMORIA - 1;  // Base de pila
-    registrosCpu.sp = TAMANO_MEMORIA - 1;  // Tope de pila
+    // inicializar pila al final de la memoria
+    registrosCpu.rx = TAMANO_MEMORIA - 1;  // base de pila
+    registrosCpu.sp = TAMANO_MEMORIA - 1;  // tope de pila
     
-    // Inicializar PSW
-    // El CPU inicia en modo KERNEL para la carga del sistema operativo
-    // Luego cambiara a modo USUARIO cuando termine la inicializacion
+    // inicializar PSW
+    // el cpu inicia en modo KERNEL para la carga del sistema operativo
+    // luego cambiara a modo USUARIO cuando termine la inicializacion
     registrosCpu.psw.codigoCondicion = CC_CERO;
     registrosCpu.psw.modoOperacion = MODO_KERNEL;
     registrosCpu.psw.habilitarInterrupciones = INT_HABILITADAS;
     registrosCpu.psw.pc = 0;  // PC inicia en 0 (logico)
     
-    // Reiniciar contadores
+    // reiniciar contadores
     contadorCiclos = 0;
     intervaloReloj = 0;
     interrupcionPendiente = 0;
     codigoInterrupcionPendiente = -1;
     cpuEjecutando = 0;
     
-    // Reiniciar deteccion de bucles
+    // reiniciar deteccion de bucles
     lastPC = -1;
     repetitionCount = 0;
     
     imprimirLog("CPU inicializado correctamente");
 }
 
-/*
- * Bucle principal del CPU. Ejecuta ciclos hasta fin de programa (segun RB/RL) o error fatal.
- */
+// bucle principal del CPU, ejecuta ciclos hasta fin de programa (segun RB/RL) o error fatal.
 void ejecutarCpu() {
     cpuEjecutando = 1;
     imprimirLog("Iniciando ejecucion del CPU");
     
-    // Bucle principal de ejecucion
+    // bucle principal de ejecucion
     while (cpuEjecutando) {
-        // Ejecutar un ciclo de instruccion
+        // ejecutar un ciclo de instruccion
         if (!cicloCpu()) {
             // cicloCpu retorno 0, detener ejecucion
             break;
         }
-        
-
     }
     
-    // Mostrar estado final
-    
-    // Mostrar estado final
+    // mostrar estado final
     imprimirLog("Devolviendo control a la consola");
-    // imprimirEstadoCpu(); // Deshabilitado: Usuario no desea ver registros al finalizar run
 }
 
 int cicloCpu() {
     char buffer[100];
     
-    // Deteccion de bucle infinito (PC estatico)
-    // Si el PC no cambia durante 5 ciclos, asumimos deadlock o JMP .
+    // deteccion de bucle infinito 
+    // si el PC no cambia durante 5 ciclos
     if (registrosCpu.psw.pc == lastPC) {
         repetitionCount++;
         if (repetitionCount >= 5) {
@@ -319,19 +282,19 @@ int cicloCpu() {
             return 0;
         }
     } else {
-        lastPC = registrosCpu.psw.pc;
-        repetitionCount = 0;
+        lastPC = registrosCpu.psw.pc; // actualiza el pc
+        repetitionCount = 0; // reinicia el contador
     }
     
-    // Antes de FETCH: verificar fin por RL inclusivo o PC fuera de RB
+    // antes de la busqueda verificar fin por RL o PC fuera de RB
     int direccionFisicaPC = traducirDireccion(registrosCpu.psw.pc);
-    // Si PC > RL -> fin del programa (RL es inclusivo)
+    // si PC > RL -> fin del programa 
     if (direccionFisicaPC > registrosCpu.rl) {
         imprimirLog("Detectada ultima instruccion, fin de programa");
         cpuEjecutando = 0;
         return 0;
     }
-    // Si PC < RB -> direccion invalida
+    // si PC < RB -> direccion invalida
     if (direccionFisicaPC < registrosCpu.rb) {
         imprimirLog("ERROR: PC < RB - Direccion invalida");
         interrupcionPendiente = 1;
@@ -339,10 +302,10 @@ int cicloCpu() {
         return 1;
     }
 
-    // 1. FETCH
+    // busqueda
     faseFetch();
     
-    // 2. DECODE
+    // decodificacion
     faseDecode();
     
     sprintf(buffer, "FETCH-DECODE: Op=%02d Dir=%d Val=%05d en PC=%05d",
@@ -352,24 +315,23 @@ int cicloCpu() {
             registrosCpu.psw.pc - 1);
     imprimirLog(buffer);
     
-    // 3. EXECUTE
+    // ejecucion
     faseExecute();
     
-    // VERIFICACION DE INTERRUPCIONES (Parte final del ciclo)
-    
-    // 1. Interrupciones generadas por la instruccion (Pendientes/Fatales)
+    // verificacion de interrupciones
+    // interrupciones generadas por la instruccion (pendientes/fatales)
     if (interrupcionPendiente && registrosCpu.psw.habilitarInterrupciones) {
-        // Intentar manejar la interrupcion
+        // intentar manejar la interrupcion
         if (!manejarInterrupcion(codigoInterrupcionPendiente)) {
-            // Interrupcion FATAL -> Detener CPU
+            // interrupcion FATAL -> detener CPU
             cpuEjecutando = 0;
         }
-        // Limpiar flags
+        // limpiar banderas
         interrupcionPendiente = 0;
         codigoInterrupcionPendiente = -1;
     }
     
-    // 2. Interrupcion de Reloj (Timer)
+    // interrupcion de reloj
     if (intervaloReloj > 0) {
         contadorCiclos++;
         if (contadorCiclos >= intervaloReloj) {
@@ -380,26 +342,26 @@ int cicloCpu() {
         }
     }
     
-    // 3. Interrupcion de E/S (DMA)
+    // interrupcion de E/S (DMA)
     if (verificarInterrupcionDma() && registrosCpu.psw.habilitarInterrupciones) {
         interrupcionPendienteDma = 0;
         manejarInterrupcion(INT_IO_DONE);
     }
 
-    // Si hubo error fatal, cpuEjecutando sera 0
+    // si hubo error fatal, cpuEjecutando sera 0
     return cpuEjecutando;
 }
 
 void faseFetch() {
     int direccionFisica;
     
-    // Traducir PC (logico) a direccion fisica
+    // traducir PC (logico) a direccion fisica
     direccionFisica = traducirDireccion(registrosCpu.psw.pc);
     
     // MAR <- direccion fisica (la direccion real de memoria)
     registrosCpu.mar = enteroAPalabra(direccionFisica);
     
-    // Verificar proteccion de memoria
+    // verificar proteccion de memoria
     if (!verificarProteccionMemoria(direccionFisica)) {
         interrupcionPendiente = 1;
         codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
@@ -415,174 +377,178 @@ void faseFetch() {
 
 void faseDecode() {
     // IR <- MDR (la instruccion esta en MDR)
-    // Formato: [Signo][OODDVVVVV] donde OO=opcode (2d), D=modo (1d), VVVVV=valor (5d)
+    // Formato: 
+    // [Signo][OODDVVVVV] 
+    // OO=opcode (2d), D=modo (1d), VVVVV=valor (5d)
     int instruccionCompleta = registrosCpu.mdr.digitos;
 
-    // Extraer campos de la instruccion (8 digitos totales)
+    // extraer campos de la instruccion 
     registrosCpu.ir.codigoOperacion = instruccionCompleta / 1000000;        // Primeros 2
     registrosCpu.ir.direccionamiento = (instruccionCompleta / 100000) % 10; // 3er digito
     registrosCpu.ir.valor = instruccionCompleta % 100000;                   // Ultimos 5
 }
 
 int faseExecute() {
+    // obtener los campos de la instruccion
     int opcode = registrosCpu.ir.codigoOperacion;
     int modo = registrosCpu.ir.direccionamiento;
     int valor = registrosCpu.ir.valor;
+    // declarar variables para hacer las operaciones
     Palabra operando;
     int resultado, valorAc, valorOp;
     int direccionFisica;
     char buffer[100];
     
-    // Verificar instruccion privilegiada en modo usuario
+    // verificar si el cpu esta en modo usuario y la instruccion es privilegiada
     if (registrosCpu.psw.modoOperacion == MODO_USUARIO && esInstruccionPrivilegiada(opcode)) {
         sprintf(buffer, "ERROR: Instruccion privilegiada %02d en modo usuario", opcode);
         imprimirLog(buffer);
-        interrupcionPendiente = 1;
+        interrupcionPendiente = 1; // levantar bandera de interrupcion
         codigoInterrupcionPendiente = INT_INSTRUCCION_INVALIDA;
         return 1;
     }
     
-    // Ejecutar segun opcode
+    // ejecutar segun opcode
     switch (opcode) {
-        /* ===== GRUPO 1: ARITMETICAS (SUM, RES, MULT) ===== */
+        // GRUPO 1: ARITMETICAS (SUM, RES, MULT)
         case OP_SUM:
         case OP_RES:
         case OP_MULT:
-            operando = obtenerOperando(modo, valor);
-            valorAc = palabraAEntero(registrosCpu.ac);
-            valorOp = palabraAEntero(operando);
+            operando = obtenerOperando(modo, valor); // trae el dato 
+            valorAc = palabraAEntero(registrosCpu.ac); // valor del ac a num
+            valorOp = palabraAEntero(operando); // valor del operano a num
             // Realizar operacion segun opcode
-            if (opcode == OP_SUM) resultado = valorAc + valorOp;
-            else if (opcode == OP_RES) resultado = valorAc - valorOp;
-            else resultado = valorAc * valorOp;
-            registrosCpu.ac = enteroAPalabra(resultado);
-            actualizarCodigoCondicion(resultado);
+            if (opcode == OP_SUM) resultado = valorAc + valorOp; // suma
+            else if (opcode == OP_RES) resultado = valorAc - valorOp; // resta
+            else resultado = valorAc * valorOp; // multiplicacion
+            registrosCpu.ac = enteroAPalabra(resultado); // resultado a ac
+            actualizarCodigoCondicion(resultado); // actualizar banderas
             break;
             
-        case OP_DIVI:  // 03: AC = AC / dato
-            operando = obtenerOperando(modo, valor);
-            valorOp = palabraAEntero(operando);
-            if (valorOp == 0) {
+        case OP_DIVI:  // 03: division
+            operando = obtenerOperando(modo, valor); // trae el dato
+            valorOp = palabraAEntero(operando); // dato a num
+            if (valorOp == 0) { // si es cero error
                 imprimirLog("ERROR: Division por cero");
-                interrupcionPendiente = 1;
+                interrupcionPendiente = 1; // levanta bandera
                 codigoInterrupcionPendiente = INT_OVERFLOW;
                 return 1;
             }
-            valorAc = palabraAEntero(registrosCpu.ac);
-            resultado = valorAc / valorOp;
-            registrosCpu.ac = enteroAPalabra(resultado);
-            actualizarCodigoCondicion(resultado);
+            valorAc = palabraAEntero(registrosCpu.ac); // ac a num
+            resultado = valorAc / valorOp; // operacion
+            registrosCpu.ac = enteroAPalabra(resultado); // resultado a ac
+            actualizarCodigoCondicion(resultado); // actualizar banderas
             break;
             
-        /* ===== GRUPO 2: TRANSFERENCIA AC-MEMORIA ===== */
-        case OP_LOAD:  // 04: AC = M[direccion]
-            operando = obtenerOperando(modo, valor);
-            registrosCpu.ac = operando;
+        // GRUPO 2: TRANSFERENCIA AC-MEMORIA
+        case OP_LOAD:  // 04: cargar
+            operando = obtenerOperando(modo, valor); // trae el dato de la ram
+            registrosCpu.ac = operando; // lo guarda en el ac
             break;
             
-        case OP_STR:  // 05: M[direccion] = AC
-            if (modo == DIR_INMEDIATO) {
+        case OP_STR:  // 05: guardar
+            if (modo == DIR_INMEDIATO) { // en este modo no funciona
                 imprimirLog("ERROR: STR no soporta modo inmediato");
                 return 1;
             }
-            if (modo == DIR_INDEXADO) {
+            if (modo == DIR_INDEXADO) { // se suma para obtener la direccion
                 direccionFisica = traducirDireccion(valor + palabraAEntero(registrosCpu.ac));
             } else {
-                direccionFisica = traducirDireccion(valor);
+                direccionFisica = traducirDireccion(valor); // direccion logica a fisica
             }
-            if (!verificarProteccionMemoria(direccionFisica)) {
+            if (!verificarProteccionMemoria(direccionFisica)) { // si no es del programa salta
                 interrupcionPendiente = 1;
                 codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
                 return 1;
             }
-            escribirMemoria(direccionFisica, registrosCpu.ac);
+            escribirMemoria(direccionFisica, registrosCpu.ac); // guarda el ac en la ram
             break;
             
-        /* ===== GRUPO 3: TRANSFERENCIA AC-REGISTROS (PRIVILEGIADAS) ===== */
-        case OP_LOADRX:  // 06: AC = RX
-            registrosCpu.ac = enteroAPalabra(registrosCpu.rx);
+        // GRUPO 3: TRANSFERENCIA AC-REGISTROS (PRIVILEGIADAS)
+        case OP_LOADRX:  // 06: cargar rx
+            registrosCpu.ac = enteroAPalabra(registrosCpu.rx); // ac guarda lo que hay en rx
             break;
             
-        case OP_STRRX:  // 07: RX = AC
-            registrosCpu.rx = palabraAEntero(registrosCpu.ac);
+        case OP_STRRX:  // 07: guardar rx
+            registrosCpu.rx = palabraAEntero(registrosCpu.ac); // rx guarda lo que hay en ac
             break;
             
-        /* ===== GRUPO 4: COMPARACION Y SALTOS ===== */
-        case OP_COMP:  // 08: Compara AC con dato
-            operando = obtenerOperando(modo, valor);
-            valorAc = palabraAEntero(registrosCpu.ac);
-            valorOp = palabraAEntero(operando);
+        // GRUPO 4: COMPARACION Y SALTOS
+        case OP_COMP:  // 08: comparar
+            operando = obtenerOperando(modo, valor); // trae el dato
+            valorAc = palabraAEntero(registrosCpu.ac); // ac a num
+            valorOp = palabraAEntero(operando); // dato a num
             if (valorAc == valorOp) {
-                registrosCpu.psw.codigoCondicion = CC_CERO;
+                registrosCpu.psw.codigoCondicion = CC_CERO; // si son iguales
             } else if (valorAc < valorOp) {
-                registrosCpu.psw.codigoCondicion = CC_NEGATIVO;
+                registrosCpu.psw.codigoCondicion = CC_NEGATIVO; // si ac es menor
             } else {
-                registrosCpu.psw.codigoCondicion = CC_POSITIVO;
+                registrosCpu.psw.codigoCondicion = CC_POSITIVO; // si ac es mayor
             }
             break;
             
-        /* ===== GRUPO 4: SALTOS CONDICIONALES (comparan AC con M[SP]) ===== */
+        // GRUPO 4: SALTOS CONDICIONALES (comparan AC con M[SP])
         case OP_JMPE:
         case OP_JMPNE:
         case OP_JMPLT:
         case OP_JMPLGT:
-            valorAc = palabraAEntero(registrosCpu.ac);
-            valorOp = palabraAEntero(leerMemoria(registrosCpu.sp));
-            // Evaluar condicion segun opcode
+            valorAc = palabraAEntero(registrosCpu.ac); // ac a num
+            valorOp = palabraAEntero(leerMemoria(registrosCpu.sp)); // dato en la pila a num
+            // evaluar condicion segun opcode
             int saltar = 0;
-            if (opcode == OP_JMPE && valorAc == valorOp) saltar = 1;
-            else if (opcode == OP_JMPNE && valorAc != valorOp) saltar = 1;
-            else if (opcode == OP_JMPLT && valorAc < valorOp) saltar = 1;
-            else if (opcode == OP_JMPLGT && valorAc > valorOp) saltar = 1;
-            // Ejecutar salto si corresponde
+            if (opcode == OP_JMPE && valorAc == valorOp) saltar = 1; // si son iguales
+            else if (opcode == OP_JMPNE && valorAc != valorOp) saltar = 1; // si son distintos
+            else if (opcode == OP_JMPLT && valorAc < valorOp) saltar = 1; // si es menor
+            else if (opcode == OP_JMPLGT && valorAc > valorOp) saltar = 1; // si es mayor
+            // ejecutar salto si corresponde
             if (saltar) {
-                if (!verificarDireccionSalto(valor)) {
+                if (!verificarDireccionSalto(valor)) { // si la direccion no pertenece al programa salta
                     imprimirLog("ERROR: Salto fuera de limites RB/RL");
-                    interrupcionPendiente = 1;
+                    interrupcionPendiente = 1; // levanta bandera
                     codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
                     return 1;
                 }
-                registrosCpu.psw.pc = valor;
+                registrosCpu.psw.pc = valor; // actualiza el pc con el salto
             }
             break;
             
-        /* ===== GRUPO 5: CONTROL DEL SISTEMA ===== */
-        case OP_SVC:  // 13: Llamada al sistema
+        // GRUPO 5: CONTROL DEL SISTEMA
+        case OP_SVC:  // 13: llamada al sistema
             imprimirLog("SVC: Llamada al sistema");
-            interrupcionPendiente = 1;
-            codigoInterrupcionPendiente = INT_SVC;
+            interrupcionPendiente = 1; // levanta bandera
+            codigoInterrupcionPendiente = INT_SVC; // le avisa al so
             break;
             
-        case OP_RETRN:  // 14: Retorno de subrutina (PRIVILEGIADA)
-            // Pop PC de la pila (verificar underflow)
-            if (registrosCpu.sp >= registrosCpu.rx) {
+        case OP_RETRN:  // 14: retorno
+            // pop pc de la pila 
+            if (registrosCpu.sp >= registrosCpu.rx) { // si ya no hay nada en la pila sale
                 imprimirLog("ERROR: Stack underflow al hacer RETRN");
                 interrupcionPendiente = 1;
                 codigoInterrupcionPendiente = INT_UNDERFLOW;
                 return 1;
             }
-            registrosCpu.psw.pc = palabraAEntero(leerMemoria(registrosCpu.sp));
-            registrosCpu.sp++;
+            registrosCpu.psw.pc = palabraAEntero(leerMemoria(registrosCpu.sp)); // recupera el pc de la pila
+            registrosCpu.sp++; // actualiza el sp
             break;
             
-        case OP_HAB:  // 15: Habilitar interrupciones (PRIVILEGIADA)
-            registrosCpu.psw.habilitarInterrupciones = INT_HABILITADAS;
+        case OP_HAB:  // 15: habilitar interrupciones
+            registrosCpu.psw.habilitarInterrupciones = INT_HABILITADAS; // se activan las interrupciones
             imprimirLog("Interrupciones habilitadas");
             break;
             
-        case OP_DHAB:  // 16: Deshabilitar interrupciones (PRIVILEGIADA)
-            registrosCpu.psw.habilitarInterrupciones = INT_DESHABILITADAS;
+        case OP_DHAB:  // 16: deshabilitar interrupciones
+            registrosCpu.psw.habilitarInterrupciones = INT_DESHABILITADAS; // se desactivan
             imprimirLog("Interrupciones deshabilitadas");
             break;
             
-        case OP_TTI:  // 17: Establece intervalo de reloj (PRIVILEGIADA)
-            intervaloReloj = valor;
-            contadorCiclos = 0;
+        case OP_TTI:  // 17: intervalo de reloj (privilegiada)
+            intervaloReloj = valor; // se guarda el valor en el reloj
+            contadorCiclos = 0; // se reinicia el contador
             sprintf(buffer, "Timer configurado: interrupcion cada %d ciclos", valor);
             imprimirLog(buffer);
             break;
             
-        case OP_CHMOD:  // 18: Cambiar modo (PRIVILEGIADA)
+        case OP_CHMOD:  // 18: Cambiar modo (privilegiada)
             if (registrosCpu.psw.modoOperacion == MODO_KERNEL) {
                 registrosCpu.psw.modoOperacion = MODO_USUARIO;
                 imprimirLog("Cambio a modo USUARIO");
@@ -592,125 +558,125 @@ int faseExecute() {
             }
             break;
             
-        /* ===== GRUPO 6: REGISTROS BASE/LIMITE/PILA (PRIVILEGIADAS) ===== */
-        case OP_LOADRB:  // 19: AC = RB
-        case OP_LOADRL:  // 21: AC = RL
-        case OP_LOADSP:  // 23: AC = SP
-            if (opcode == OP_LOADRB) registrosCpu.ac = enteroAPalabra(registrosCpu.rb);
-            else if (opcode == OP_LOADRL) registrosCpu.ac = enteroAPalabra(registrosCpu.rl);
-            else registrosCpu.ac = enteroAPalabra(registrosCpu.sp);
+        // GRUPO 6: REGISTROS BASE/LIMITE/PILA (privilegiadas)
+        case OP_LOADRB:  // 19: cargar rb
+        case OP_LOADRL:  // 21: cargar rl
+        case OP_LOADSP:  // 23: cargar sp
+            if (opcode == OP_LOADRB) registrosCpu.ac = enteroAPalabra(registrosCpu.rb); // ac guarda el rb
+            else if (opcode == OP_LOADRL) registrosCpu.ac = enteroAPalabra(registrosCpu.rl); // ac guarda el rl
+            else registrosCpu.ac = enteroAPalabra(registrosCpu.sp); // ac guarda el sp
             break;
             
-        case OP_STRRB:  // 20: RB = AC
+        case OP_STRRB:  // 20: guardar rb
             {
-                int nuevoRB = palabraAEntero(registrosCpu.ac);
-                if (nuevoRB < INICIO_MEMORIA_USUARIO || nuevoRB >= registrosCpu.rl) {
+                int nuevoRB = palabraAEntero(registrosCpu.ac); // nuevo valor de ac a num
+                if (nuevoRB < INICIO_MEMORIA_USUARIO || nuevoRB >= registrosCpu.rl) { // validaciones del rb
                     imprimirLog("ERROR: Valor invalido para RB");
-                    interrupcionPendiente = 1;
+                    interrupcionPendiente = 1; // levanta bandera
                     codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
                     return 1;
                 }
-                registrosCpu.rb = nuevoRB;
+                registrosCpu.rb = nuevoRB; // actualiza el rb
             }
             break;
             
-        case OP_STRRL:  // 22: RL = AC
+        case OP_STRRL:  // 22: guardar rl
             {
-                int nuevoRL = palabraAEntero(registrosCpu.ac);
-                if (nuevoRL < registrosCpu.rb || nuevoRL >= TAMANO_MEMORIA) {
+                int nuevoRL = palabraAEntero(registrosCpu.ac); // nuevo valor de ac a num
+                if (nuevoRL < registrosCpu.rb || nuevoRL >= TAMANO_MEMORIA) { // validacion
                     imprimirLog("ERROR: Valor invalido para RL");
                     interrupcionPendiente = 1;
                     codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
                     return 1;
                 }
-                registrosCpu.rl = nuevoRL;
+                registrosCpu.rl = nuevoRL; // actualiza rl
             }
             break;
             
-        case OP_STRSP:  // 24: SP = AC
+        case OP_STRSP:  // 24: guardar sp
             {
-                int nuevoSP = palabraAEntero(registrosCpu.ac);
-                if (nuevoSP < registrosCpu.rb || nuevoSP > registrosCpu.rx) {
+                int nuevoSP = palabraAEntero(registrosCpu.ac); // nuevo valor a num
+                if (nuevoSP < registrosCpu.rb || nuevoSP > registrosCpu.rx) { // validacion de la pila
                     imprimirLog("ERROR: Valor invalido para SP");
                     interrupcionPendiente = 1;
                     codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
                     return 1;
                 }
-                registrosCpu.sp = nuevoSP;
+                registrosCpu.sp = nuevoSP; // actualiza sp
             }
             break;
             
-        /* ===== GRUPO 7: PILA ===== */
-        case OP_PSH:  // 25: Push AC a pila
-            registrosCpu.sp--;
-            if (registrosCpu.sp < registrosCpu.rb) {
+        // GRUPO 7: PILA
+        case OP_PSH:  // 25: push
+            registrosCpu.sp--; // primero baja el puntero de la pila
+            if (registrosCpu.sp < registrosCpu.rb) { // validacion del programa
                 imprimirLog("ERROR: Stack overflow");
-                interrupcionPendiente = 1;
+                interrupcionPendiente = 1; // levanta bandera
                 codigoInterrupcionPendiente = INT_OVERFLOW;
                 return 1;
             }
-            escribirMemoria(registrosCpu.sp, registrosCpu.ac);
+            escribirMemoria(registrosCpu.sp, registrosCpu.ac); // guarda el ac en la pila
             break;
             
-        case OP_POP:  // 26: Pop de pila a AC
-            // Underflow: SP == RX => pila vacia
-            if (registrosCpu.sp >= registrosCpu.rx) {
+        case OP_POP:  // 26: pop
+            // underflow: SP == RX => pila vacia
+            if (registrosCpu.sp >= registrosCpu.rx) { // si no hay nada en la pila sale
                 imprimirLog("ERROR: Stack underflow");
                 interrupcionPendiente = 1;
                 codigoInterrupcionPendiente = INT_UNDERFLOW;
                 return 1;
             }
-            registrosCpu.ac = leerMemoria(registrosCpu.sp);
-            registrosCpu.sp++;
+            registrosCpu.ac = leerMemoria(registrosCpu.sp); // recupera de la pila al ac
+            registrosCpu.sp++; // actualiza el puntero subiendo
             break; 
             
-        /* ===== GRUPO 8: SALTO INCONDICIONAL ===== */
-        case OP_J:  // 27: PC = direccion (salto incondicional)
-            // Verificar que la direccion destino este dentro de limites
-            if (!verificarDireccionSalto(valor)) {
+        // GRUPO 8: SALTO INCONDICIONAL
+        case OP_J:  // 27: salto de fe
+            // verificar que la direccion destino este dentro de limites
+            if (!verificarDireccionSalto(valor)) { // si no pertenece al programa salta
                 imprimirLog("ERROR: Salto fuera de limites RB/RL");
-                interrupcionPendiente = 1;
+                interrupcionPendiente = 1; // levanta bandera
                 codigoInterrupcionPendiente = INT_DIRECCION_INVALIDA;
                 return 1;
             }
-            registrosCpu.psw.pc = valor;
+            registrosCpu.psw.pc = valor; // actualiza el pc con el salto (salto incondicional)
             break;
             
-        /* ===== GRUPO 9: DMA (Instrucciones de E/S) ===== */
-        case OP_SDMAP:  // 28: Establecer pista del DMA
-            dma.pistaSeleccionada = valor;
+        // GRUPO 9: DMA (Instrucciones de E/S)
+        case OP_SDMAP:  // 28: pista del DMA
+            dma.pistaSeleccionada = valor; // guarda la pista
             sprintf(buffer, "DMA: Pista establecida a %d", valor);
             imprimirLog(buffer);
             break;
             
-        case OP_SDMAC:  // 29: Establecer cilindro del DMA
-            dma.cilindroSeleccionado = valor;
+        case OP_SDMAC:  // 29: cilindro del DMA
+            dma.cilindroSeleccionado = valor; // guarda el cilindro
             sprintf(buffer, "DMA: Cilindro establecido a %d", valor);
             imprimirLog(buffer);
             break;
             
-        case OP_SDMAS:  // 30: Establecer sector del DMA
-            dma.sectorSeleccionado = valor;
+        case OP_SDMAS:  // 30: sector del DMA
+            dma.sectorSeleccionado = valor; // guarda el sector
             sprintf(buffer, "DMA: Sector establecido a %d", valor);
             imprimirLog(buffer);
             break;
             
-        case OP_SDMAIO:  // 31: Establecer direccion de E/S (0=leer, 1=escribir)
-            dma.direccionIo = valor;
+        case OP_SDMAIO:  // 31: direccion de E/S
+            dma.direccionIo = valor; // guarda si lee o escribe
             sprintf(buffer, "DMA: Direccion E/S establecida a %d (%s)",
                     valor, valor == 0 ? "LEER" : "ESCRIBIR");
             imprimirLog(buffer);
             break;
             
-        case OP_SDMAM:  // 32: Establecer direccion de memoria
-            dma.direccionMemoria = valor;
+        case OP_SDMAM:  // 32: direccion de memoria
+            dma.direccionMemoria = valor; // guarda la direccion de la memoria ram
             sprintf(buffer, "DMA: Direccion de memoria establecida a %d", valor);
             imprimirLog(buffer);
             break;
             
-        case OP_SDMAON:  // 33: Iniciar transferencia DMA
+        case OP_SDMAON:  // 33: iniciar dma
             imprimirLog("DMA: Iniciando transferencia...");
-            iniciarTransferenciaDma();
+            iniciarTransferenciaDma(); // dispara el hilo para mover los datos
             break;
             
         default:
@@ -721,7 +687,7 @@ int faseExecute() {
             return 1;
     }
     
-    return 1;  // Continuar ejecucion
+    return 1;  // continuar ejecucion
 }
 
 void guardarContexto() {
@@ -737,7 +703,7 @@ void guardarContexto() {
         return;
     }
     
-    // Apilar registros: AC, RB, RL, RX, SP original, PSW
+    // apilar registros: AC, RB, RL, RX, SP original, PSW 
     registrosCpu.sp--; escribirMemoria(registrosCpu.sp, registrosCpu.ac);
     registrosCpu.sp--; escribirMemoria(registrosCpu.sp, enteroAPalabra(registrosCpu.rb));
     registrosCpu.sp--; escribirMemoria(registrosCpu.sp, enteroAPalabra(registrosCpu.rl));
@@ -751,7 +717,7 @@ void guardarContexto() {
 void restaurarContexto() {
     imprimirLog("Restaurando contexto desde la pila...");
     
-    // Desapilar en orden inverso: PSW, SP original, RX, RL, RB, AC
+    // desapilar en orden inverso: PSW, SP original, RX, RL, RB, AC
     decodificarPsw(leerMemoria(registrosCpu.sp)); registrosCpu.sp++;
     int spOriginal = palabraAEntero(leerMemoria(registrosCpu.sp)); registrosCpu.sp++;
     registrosCpu.rx = palabraAEntero(leerMemoria(registrosCpu.sp)); registrosCpu.sp++;
@@ -759,36 +725,28 @@ void restaurarContexto() {
     registrosCpu.rb = palabraAEntero(leerMemoria(registrosCpu.sp)); registrosCpu.sp++;
     registrosCpu.ac = leerMemoria(registrosCpu.sp); registrosCpu.sp++;
     
-    // Restaurar SP al valor original
+    // restaurar SP al valor original
     registrosCpu.sp = spOriginal;
     imprimirLog("Contexto restaurado exitosamente");
 }
 
-/*
- * Maneja una interrupcion. Retorna 1 si es recuperable, 0 si es fatal.
- */
+// maneja una interrupcion retorna 1 si es recuperable, 0 si es fatal
 int manejarInterrupcion(int codigoInterrupcion) {
 
     int esRecuperable = 0;
-    
-    // Modificado para usar sistema de logs
-    // sprintf(buffer, "=== INTERRUPCION %d ===", codigoInterrupcion);
-    // imprimirLog(buffer);
-    // printf("[INTERRUPCION] Codigo: %d\n", codigoInterrupcion);
-    
-    // 1. Guardar contexto
+    // guardar contexto
     guardarContexto();
     
-    // 2. Cambiar a modo kernel
+    // cambiar a modo kernel
     registrosCpu.psw.modoOperacion = MODO_KERNEL;
     
-    // 3. Deshabilitar interrupciones
+    // deshabilitar interrupciones
     registrosCpu.psw.habilitarInterrupciones = INT_DESHABILITADAS;
     
-    // 4. Determinar si es recuperable y ejecutar manejador
+    // determinar si es recuperable y ejecutar manejador
     const char *desc = "Desconocida";
     
-    // 4. Determinar si es recuperable y obtener descripcion
+    // es importante aclarar que las interrupciones se identifican, pero se manejan solo clasificandolas en recuperables o no
     switch (codigoInterrupcion) {
         case INT_SYSCALL_INVALIDA:  // 0
             desc = "Syscall invalida";
@@ -836,7 +794,7 @@ int manejarInterrupcion(int codigoInterrupcion) {
             break;
     }
 
-    // Mensaje unificado y claro tanto para consola como log
+    // mensaje unificado y claro tanto para consola como log
     // logInterrupcion se imprime en ambos destinos
     char tipoInt[20];
     if (esRecuperable) strcpy(tipoInt, "RECUPERABLE");
@@ -849,10 +807,8 @@ int manejarInterrupcion(int codigoInterrupcion) {
     } else {
         logCpu("Manejando interrupcion recuperable: %s", desc);
     }
-            
-    // (Bloque de casos antiguos eliminado)
     
-    // 5. Si es recuperable, restaurar contexto y volver a modo usuario
+    // si es recuperable, restaurar contexto y volver a modo usuario
     if (esRecuperable) {
         restaurarContexto();
         imprimirLog("Retornando de interrupcion");
@@ -861,8 +817,8 @@ int manejarInterrupcion(int codigoInterrupcion) {
         cpuEjecutando = 0;
     }
     
-    registrosCpu.psw.modoOperacion = MODO_USUARIO;
-    registrosCpu.psw.habilitarInterrupciones = INT_HABILITADAS;
+    registrosCpu.psw.modoOperacion = MODO_USUARIO; // cambiar a modo usuario   
+    registrosCpu.psw.habilitarInterrupciones = INT_HABILITADAS; // habilitar interrupciones
     return esRecuperable;
 }
 

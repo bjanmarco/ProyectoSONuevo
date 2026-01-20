@@ -1,49 +1,42 @@
-// ARCHIVO: logger.h
-// El sistema de Logs (Bitacora).
-// Basicamente, un chismoso que anota TODO lo que pasa en "maquina_virtual.log".
-// Es vital para encontrar bugs sin volverse loco con prints en consola.
-
+// básicamente un chismoso que anota todo lo que pasa en "maquina_virtual.log".
+// Es vital para encontrar bugs sin volverse loco con prints en consola
 #ifndef LOGGER_H
 #define LOGGER_H
 
 #include <stdio.h>
 
-// Niveles de log para saber quien esta hablando.
+// Este es un enum para identificar los nivles porque asi se puede saber quien escribe
 typedef enum {
-    LOG_CPU,            
-    LOG_MEMORIA,        
-    LOG_DISCO,          
-    LOG_DMA,            
-    LOG_LOADER,         
-    LOG_INTERRUPCION,   // Este es especial: tambien sale por pantalla porque es importante.
-    LOG_SISTEMA,        
-    LOG_DEBUG           
+    LOG_CPU,            // para el CPU, ciclos e instrucciones
+    LOG_MEMORIA,        // para la memoria, lecturas y escrituras
+    LOG_DISCO,          // para el disco, lecturas y escrituras
+    LOG_DMA,            // para el DMA  , lecturas y escrituras
+    LOG_LOADER,         // para el loader, lecturas y escrituras
+    LOG_INTERRUPCION,   // este tambien sale por pantalla porque es importante
+    LOG_SISTEMA,        // para el sistema, errores y advertencias
+    LOG_DEBUG           // para el debug, solo sale por pantalla
 } NivelLog;
 
+// constantes importantes
 #define ARCHIVO_LOG_DEFECTO "maquina_virtual.log"
 #define MAX_MENSAJE_LOG 512
 
-// --- Variables Globales del Logger ---
+// variables globales 
+extern FILE *archivoLog;      // el archivo fisico donde escribimos
+extern int loggerActivo;      // variable para apagarlo
 
-extern FILE *archivoLog;      // El archivo fisico donde escribimos
-extern int loggerActivo;      // Switch maestro por si queremos silenciarlo
-extern int contadorLineasLog; // Pa saber cuanto escribimos
-
-// --- Funciones del Logger ---
-
-// Abre el archivo. Si falla (por permisos o disco lleno), avisa.
+// funciones del logger
+// abre el archivo y si falla (por permisos o disco lleno), avisa.
 int inicializarLogger(const char *nombreArchivo);
 
-// Cierra el archivo educadamente al salir.
+// cierra el archivo al salir.
 void finalizarLogger();
 
-// La funcion base. Funciona igual que printf pero requiere que le digas quien eres (nivel).
+// la funcion base. funciona igual que printf pero requiere que le digas quien eres (nivel).
 void escribirLog(NivelLog nivel, const char *formato, ...);
 
-// --- Macros utiles (Atajos) ---
-// Usamos macros para no tener que escribir "LOG_CPU" todo el tiempo.
-// Son wrappers cosmeticos sobre escribirLog.
-
+// usamos macros como atajos, qque son como funciones de buscar y remplazar
+// todo para no tener que escribir "LOG_CPU" todo el tiempo.
 #define logCpu(fmt, ...) escribirLog(LOG_CPU, fmt, ##__VA_ARGS__)
 #define logMemoria(fmt, ...) escribirLog(LOG_MEMORIA, fmt, ##__VA_ARGS__)
 #define logDisco(fmt, ...) escribirLog(LOG_DISCO, fmt, ##__VA_ARGS__)
