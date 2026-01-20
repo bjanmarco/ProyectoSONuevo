@@ -1,8 +1,3 @@
-// ARCHIVO: main.c
-// DESCRIPCION: Punto de entrada principal de la maquina virtual.
-//              Implementa la consola interactiva para cargar y ejecutar
-//              programas en modo normal o debug.
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -1,7 +1,3 @@
-//ARCHIVO: loader.h
-//DESCRIPCION: Cabecera del cargador de programas de la maquina virtual.
-//              Define las funciones para cargar programas desde archivos.
-
 #ifndef LOADER_H
 #define LOADER_H
 
@@ -14,8 +10,7 @@
 // Tamanio maximo de una linea del archivo
 #define MAX_LINEA 100
 
-// ESTRUCTURA DE INFORMACION DE PROGRAMA
-// Almacena los datos del programa cargado
+// Esta es una estrutura para guardar la info del archivo
 typedef struct {
     char nombre[MAX_NOMBRE_PROGRAMA];   // Nombre del programa
     int lineaInicio;                    // Valor de _start (donde empieza ejecucion)
@@ -26,7 +21,6 @@ typedef struct {
 
 // VARIABLES GLOBALES DEL LOADER
 // Siguiente direccion de memoria disponible para cargar programas
-// Inicia en INICIO_MEMORIA_USUARIO (300) y se incrementa
 extern int siguienteDireccionDisponible;
 
 // Informacion del ultimo programa cargado
@@ -34,41 +28,16 @@ extern InfoPrograma programaActual;
 
 // PROTOTIPOS DE FUNCOONES DEL LOADER
 
-// inicializarLoader()  
-// Inicializa el loader.
-// Establece la siguiente direccion disponible a INICIO_MEMORIA_USUARIO (300).
+// Cabecera de la funcion para inciar el loader
 void inicializarLoader();
 
-// cargarPrograma()
-// Carga un programa desde un archivo a memoria.
-// El formato del archivo es:
-//   _start <linea de inicio>
-//   .NumeroPalabras <cantidad>
-//   .NombreProg <nombre>
-//   <instrucciones en formato 8 digitos>
-//   .
-// Parametros:
-//   rutaArchivo - Ruta al archivo del programa
-// Retorna:
-//   0 si se cargo exitosamente
-//   1 si hubo error (archivo no existe, formato invalido, etc.)
-// Efectos:
-//   - Carga las instrucciones en memoria a partir de siguienteDireccionDisponible
-//   - Actualiza registrosCpu.rb, rl, psw.pc
-//   - Actualiza programaActual con la info del programa
-//   - Incrementa siguienteDireccionDisponible
+// Cabecera de la funcion para cargar un programa
 int cargarPrograma(const char *rutaArchivo);
 
-// prepararEjecucion()
-// Prepara el CPU para ejecutar el programa cargado.
-// Establece PC, RB, RL, SP segun el programa actual.
+// Cabecera de la funcion para preparar la ejecucion
 void prepararEjecucion();
 
-
-// reiniciarLoader()
-// Reinicia el loader al estado inicial.
-// Vuelve a poner siguienteDireccionDisponible en 300.
-// Util para reiniciar la maquina virtual.
+// Cabecera de la funcion para reiniciar el loader
 void reiniciarLoader();
 
 #endif 

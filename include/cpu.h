@@ -1,6 +1,3 @@
-// ARCHIVO: cpu.h
-// DESCRIPCION: Cabecera del componente CPU de la maquina virtual.
-
 #ifndef CPU_H
 #define CPU_H
 

@@ -1,23 +1,18 @@
-// ARCHIVO: logger.h
-// DESCRIPCION: Sistema de logging centralizado de la maquina virtual.
-//              Registra todas las acciones del sistema en archivo y consola.
-
 #ifndef LOGGER_H
 #define LOGGER_H
 
 #include <stdio.h>
 
-// NIVELES DE LOG
-// Define la categoria/origen del mensaje de log
+// Estes es un enumerado para categorizar los tipos de mensajes en el log
 typedef enum {
     LOG_CPU,            // Mensajes del CPU (ciclos, instrucciones)
     LOG_MEMORIA,        // Mensajes de acceso a memoria
     LOG_DISCO,          // Mensajes de acceso al disco
     LOG_DMA,            // Mensajes del controlador DMA
     LOG_LOADER,         // Mensajes del cargador de programas
-    LOG_INTERRUPCION,   // Mensajes de interrupciones (tambien van a stdout)
+    LOG_INTERRUPCION,   // Mensajes de interrupciones 
     LOG_SISTEMA,        // Mensajes generales del sistema
-    LOG_DEBUG           // Mensajes de depuracion (modo debug)
+    LOG_DEBUG           // Mensajes de paso a paso
 } NivelLog;
 
 // CONSTANTES DEL LOGGER
@@ -39,58 +34,42 @@ extern int contadorLineasLog;
 
 // PROTOTIPOS DE FUNCIONES DEL LOGGER   
 
-// inicializarLogger()
-// Inicializa el sistema de logging.
-// Abre el archivo de log para escritura.
-// Parametros:
-//   nombreArchivo - Nombre del archivo de log (NULL para usar defecto)
-// Retorna:
-//   0 si exito, 1 si error al abrir archivo
+// Cabecera de la funcio para iniciar el log
 int inicializarLogger(const char *nombreArchivo);
 
-// finalizarLogger()
-// Cierra el sistema de logging.
-// Cierra el archivo de log y libera recursos.
+// Cabecera de la funcion para cerra el log
 void finalizarLogger();
 
-// escribirLog()
-// Escribe un mensaje en el archivo de log.
-// Los mensajes de tipo LOG_INTERRUPCION tambien se imprimen en stdout.
-// Parametros:
-//   nivel   - Nivel/categoria del mensaje
-//   formato - Formato del mensaje (como printf)
-//   ...     - Argumentos variables
+// Cabecera de la funcion que escribe mensajes en el log
 void escribirLog(NivelLog nivel, const char *formato, ...);
 
-// logCpu()
+//Una Macro es como un "atajo" o una función de "buscar y reemplazar" inteligente.
+
+/* Se le dice al compilador "Cada vez que veas algo que diga logCpu(...), cámbialo automáticamente por 
+escribirLog(LOG_CPU, ...)
+*/
+
 // Macro para log de CPU (mas conveniente de usar)
 #define logCpu(fmt, ...) escribirLog(LOG_CPU, fmt, ##__VA_ARGS__)
 
-// logMemoria()
 // Macro para log de memoria
 #define logMemoria(fmt, ...) escribirLog(LOG_MEMORIA, fmt, ##__VA_ARGS__)
 
-// logDisco()
 // Macro para log de disco
 #define logDisco(fmt, ...) escribirLog(LOG_DISCO, fmt, ##__VA_ARGS__)
 
-// logDma()
 // Macro para log de DMA
 #define logDma(fmt, ...) escribirLog(LOG_DMA, fmt, ##__VA_ARGS__)
 
-// logLoader()
 // Macro para log del loader
 #define logLoader(fmt, ...) escribirLog(LOG_LOADER, fmt, ##__VA_ARGS__)
 
-// logInterrupcion()
-// Macro para log de interrupciones (tambien va a stdout)
+// Macro para log de interrupciones
 #define logInterrupcion(fmt, ...) escribirLog(LOG_INTERRUPCION, fmt, ##__VA_ARGS__)
 
-// logSistema()
 // Macro para log del sistema
 #define logSistema(fmt, ...) escribirLog(LOG_SISTEMA, fmt, ##__VA_ARGS__)
 
-// logDebug()
 // Macro para log de depuracion
 #define logDebug(fmt, ...) escribirLog(LOG_DEBUG, fmt, ##__VA_ARGS__)
 

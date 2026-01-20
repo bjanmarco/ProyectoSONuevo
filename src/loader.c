@@ -7,10 +7,9 @@
 #include "../include/logger.h"
 
 // Siguiente direccion de memoria disponible para cargar programas
-// Inicia en 300 (INICIO_MEMORIA_USUARIO)
 int siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO;
 
-// Informacion del programa actualmente cargado
+// Informacion del programa actualmente cargado (esta es la estrutura de la info)
 InfoPrograma programaActual;
 
 // Referencia externa a los registros del CPU (definidos en cpu.c)
@@ -20,17 +19,20 @@ extern Registros registrosCpu;
 extern void reiniciarDeteccionBucle();
 
 static void limpiarProgramaActual() {
+    // memeset es para llenar la memoria con 0 y asi borras lo que tenia antes  
     memset(programaActual.nombre, 0, MAX_NOMBRE_PROGRAMA);
     programaActual.lineaInicio = 0;
     programaActual.numeroPalabras = 0;
     programaActual.direccionBase = 0;
     programaActual.direccionLimite = 0;
+    //y el struct queda listo para guarda la nueva info del siguiente programa
 }
 
 void inicializarLoader() {
-    siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO;
+    siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO; // partimos de la base del usuario
     limpiarProgramaActual();
     logLoader("Loader inicializado. Direccion base: %d", 
+    // usamos el Macro El atajo para imprimir el valor de la siguiente direccion disponible
            siguienteDireccionDisponible);
 }
 
@@ -50,21 +52,25 @@ int cargarPrograma(const char *rutaArchivo) {
     logLoader("Intentando cargar: %s", rutaArchivo);
 
     // Abrir el archivo
-    archivo = fopen(rutaArchivo, "r");
+    archivo = fopen(rutaArchivo, "r"); // abrimos leyendo
     if (archivo == NULL) {
         logLoader("ERROR: No se pudo abrir el archivo %s", rutaArchivo);
         return 1;
     }
 
-    // Leer y validar el archivo (no escribir en memoria aún)
+    // Leer y validar el archivo con un ile par ahcerlo linea por linea 
     while (fgets(linea, MAX_LINEA, archivo) != NULL) {
-        linea[strcspn(linea, "\n")] = '\0';  // Eliminar salto de linea
+        // fgets incluye el salto por eso luego se elimina
+        linea[strcspn(linea, "\n")] = '\0';  // Eliminar salto de linea y lo cambia por un fin de cadena \0
 
         // Ignorar lineas vacias y comentarios
         if (strlen(linea) == 0 || linea[0] == '/' || linea[0] == '#') continue;
 
         // Parsear _start
+        // y bueno strncmp sirve para comparar strings le dices con que quiere comparar y hasta onde debe comparar
+        // si es igual entra al if, y si no error
         if (strncmp(linea, "_start", 6) == 0) {
+            // sscanf lee datos de una linea y los compara con lo que le pides
             if (sscanf(linea, "_start %d", &lineaInicio) != 1) {
                 logLoader("ERROR: _start invalido");
                 goto cleanup;
@@ -93,16 +99,17 @@ int cargarPrograma(const char *rutaArchivo) {
             continue;
         }
 
-        // Detectar fin del programa (una linea con solo '.')
+        // Detectar fin del programa 
         if (linea[0] == '.' && strlen(linea) == 1) {
             logLoader("Fin del programa detectado");
             break;
         }
 
-        // Si llegamos aqui, esperamos una instruccion: cadena de digitos (hasta 8)
+        // Si llegamos aqui, esperamos una instruccion
         int len = strlen(linea), i, ok = 1;
         for (i = 0; i < len; i++) {
-            if (linea[i] < '0' || linea[i] > '9') { ok = 0; break; }
+            if (linea[i] < '0' || linea[i] > '9') { ok = 0; break; } 
+            // porque las ir son de 8 digitos
         }
         if (!ok || len == 0 || len > 8) {
             logLoader("ERROR: Instruccion invalida en archivo: '%s'", linea);
@@ -110,27 +117,28 @@ int cargarPrograma(const char *rutaArchivo) {
         }
 
         // Convertir la linea a entero largo
-        valorInstruccion = atol(linea);
+        valorInstruccion = atol(linea); // pasa string a long
         if (valorInstruccion < 0 || valorInstruccion > 99999999L) {
             logLoader("ERROR: Valor de instruccion fuera de rango: %ld", valorInstruccion);
             goto cleanup;
         }
 
-        // Las instrucciones son positivas en este formato (8 digitos)
+        // Las instrucciones son positivas en este formato 
         instruccion.signo = 0;
         instruccion.digitos = (int)valorInstruccion;
 
-        // Agregar al buffer dinamico (expandir si es necesario)
-        if (bufferLen >= bufferCap) {
+        // Guardamos las ir del programa temporalmente en un buffer 
+        if (bufferLen >= bufferCap) { // el len son las que llevamos y el cap las totales
             int nuevaCap = (bufferCap == 0) ? 16 : bufferCap * 2;
+            // si esta vacia le damos 16 y si no el doble
             Palabra *tmp = (Palabra*)realloc(buffer, nuevaCap * sizeof(Palabra));
             if (tmp == NULL) {
                 logLoader("ERROR: No hay memoria para buffer");
-                goto cleanup;
+                goto cleanup; // si no hay memoria para el buffer, salimos
             }
-            buffer = tmp; bufferCap = nuevaCap;
+            buffer = tmp; bufferCap = nuevaCap; // actualizamos
         }
-        buffer[bufferLen++] = instruccion;
+        buffer[bufferLen++] = instruccion; // guardamosy aumentamos el len
     }
 
     fclose(archivo);
@@ -139,15 +147,15 @@ int cargarPrograma(const char *rutaArchivo) {
     // Verificar que se leyeron instrucciones
     if (bufferLen == 0) {
         logLoader("ERROR: No se encontraron instrucciones");
-        goto cleanup;
+        goto cleanup; // salto al final para cerra el archivo
     }
-    // Verificar que NumeroPalabras coincida (si fue especificado)
+    // Verificar que NumeroPalabras coincida 
     if (numeroPalabrasHeader != -1 && numeroPalabrasHeader != bufferLen) {
         logLoader("ERROR: .NumeroPalabras (%d) no coincide con instrucciones leidas (%d)",
                numeroPalabrasHeader, bufferLen);
         goto cleanup;
     }
-    // Validar _start (base 1, de 1 a bufferLen)
+    // Validar _start 
     if (lineaInicio < 1 || lineaInicio > bufferLen) {
         logLoader("ERROR: _start invalido o fuera de rango (debe ser 1..%d)", bufferLen);
         goto cleanup;
@@ -158,7 +166,7 @@ int cargarPrograma(const char *rutaArchivo) {
         goto cleanup;
     }
 
-    // Escribir buffer a memoria (commit)
+    // Escribir buffer a memoria
     int i, direccionBase = siguienteDireccionDisponible;
     for (i = 0; i < bufferLen; i++) {
         escribirMemoria(direccionBase + i, buffer[i]);
@@ -166,7 +174,7 @@ int cargarPrograma(const char *rutaArchivo) {
                i, direccionBase + i, buffer[i].signo, buffer[i].digitos);
     }
 
-    // Guardar informacion del programa
+    // Todo lo que se obtuvo despues e leer y validar se guarda en la estructura
     strncpy(programaActual.nombre, nombrePrograma, MAX_NOMBRE_PROGRAMA - 1);
     programaActual.nombre[MAX_NOMBRE_PROGRAMA - 1] = '\0';
     programaActual.lineaInicio = lineaInicio - 1;  // Convertir a base 0
@@ -193,11 +201,10 @@ void prepararEjecucion() {
 
     // Establecer registros de proteccion
     registrosCpu.rb = programaActual.direccionBase;
-    registrosCpu.rl = programaActual.direccionLimite; // RL = direccion de la ultima instruccion (incluido)
+    registrosCpu.rl = programaActual.direccionLimite;
 
 
-    // Establecer PC en la linea de inicio (direccion logica)
-    // Ya se convirtio a base 0 en cargarPrograma
+    // Establecer PC en la linea de inicio
     registrosCpu.psw.pc = programaActual.lineaInicio;
 
     // Establecer pila al FINAL de la memoria
@@ -221,6 +228,7 @@ void prepararEjecucion() {
            registrosCpu.rx, registrosCpu.sp);
 }
 
+// Reinicia el loader
 void reiniciarLoader() {
     siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO;
     limpiarProgramaActual();
