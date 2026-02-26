@@ -1,0 +1,15 @@
+ Iniciado: 00:36:35
+ Archivo: maquina_virtual.log
+[00:36:35][SIS] Maquina virtual iniciada
+[00:36:35][SIS] Memoria inicializada (KERNEL)
+[00:36:35][SIS] Disco inicializado (KERNEL)
+[00:36:35][SIS] DMA inicializado (KERNEL)
+[00:36:35][LOADER] Loader inicializado. Direccion base: 300
+[00:36:35][SIS] Loader inicializado (KERNEL)
+[00:36:35][SIS] [PROC] Gestor de procesos inicializado. Capacidad=20
+[00:36:35][SIS] Gestor de procesos inicializado (KERNEL)
+[00:36:35][CPU] [Ciclo 0] Inicializando CPU...
+[00:36:35][CPU] [Ciclo 0] CPU inicializado correctamente
+[00:36:35][SIS] CPU inicializado (KERNEL)
+[00:36:35][SIS] Sistema cambiado a modo USUARIO
+[00:36:45][SIS] Comando recibido: reg
