@@ -1,0 +1,74 @@
+ Iniciado: 04:21:49
+ Archivo: maquina_virtual.log
+[04:21:49][SIS] Maquina virtual iniciada
+[04:21:49][SIS] Memoria inicializada (KERNEL)
+[04:21:49][SIS] Disco inicializado (KERNEL)
+[04:21:49][SIS] DMA inicializado (KERNEL)
+[04:21:49][LOADER] Loader inicializado. Direccion base: 300
+[04:21:49][SIS] Loader inicializado (KERNEL)
+[04:21:49][CPU] [Ciclo 0] Inicializando CPU...
+[04:21:49][CPU] [Ciclo 0] CPU inicializado correctamente
+[04:21:49][SIS] CPU inicializado (KERNEL)
+[04:21:49][SIS] Sistema cambiado a modo USUARIO
+[04:21:49][SIS] Comando recibido: cargar caso6.txt 700
+[04:21:49][LOADER] Iniciando carga de: caso6.txt (Dir: 700)
+[04:21:49][LOADER] Intentando cargar: caso6.txt
+[04:21:49][LOADER] _start = 1
+[04:21:49][LOADER] NumeroPalabras (encabezado) = 23
+[04:21:49][LOADER] NombreProg = TestUniv
+[04:21:49][LOADER] Instruccion 0 cargada en direccion 700: 017000020
+[04:21:49][LOADER] Instruccion 1 cargada en direccion 701: 04100000
+[04:21:49][LOADER] Instruccion 2 cargada en direccion 702: 04100000
+[04:21:49][LOADER] Instruccion 3 cargada en direccion 703: 04100000
+[04:21:49][LOADER] Instruccion 4 cargada en direccion 704: 017099999
+[04:21:49][LOADER] Instruccion 5 cargada en direccion 705: 04100001
+[04:21:49][LOADER] Instruccion 6 cargada en direccion 706: 013000000
+[04:21:49][LOADER] Instruccion 7 cargada en direccion 707: 028100001
+[04:21:49][LOADER] Instruccion 8 cargada en direccion 708: 029100001
+[04:21:49][LOADER] Instruccion 9 cargada en direccion 709: 030100001
+[04:21:49][LOADER] Instruccion 10 cargada en direccion 710: 031100000
+[04:21:49][LOADER] Instruccion 11 cargada en direccion 711: 032100050
+[04:21:49][LOADER] Instruccion 12 cargada en direccion 712: 033000000
+[04:21:49][LOADER] Instruccion 13 cargada en direccion 713: 04100000
+[04:21:49][LOADER] Instruccion 14 cargada en direccion 714: 04100000
+[04:21:49][LOADER] Instruccion 15 cargada en direccion 715: 04105000
+[04:21:49][LOADER] Instruccion 16 cargada en direccion 716: 02102000
+[04:21:49][LOADER] Instruccion 17 cargada en direccion 717: 04100000
+[04:21:49][LOADER] Instruccion 18 cargada en direccion 718: 01105000
+[04:21:49][LOADER] Instruccion 19 cargada en direccion 719: 02102000
+[04:21:49][LOADER] Instruccion 20 cargada en direccion 720: 04100000
+[04:21:49][LOADER] Instruccion 21 cargada en direccion 721: 05005000
+[04:21:49][LOADER] Instruccion 22 cargada en direccion 722: 099999999
+[04:21:49][LOADER] Programa 'TestUniv' cargado exitosamente
+[04:21:49][LOADER] Instrucciones: 23, RB: 700, RL: 722, PC inicial: 0
+[04:21:49][LOADER] Programa cargado exitosamente
+[04:21:49][SIS] Comando recibido: run
+[04:21:49][SIS] Iniciando ejecucion en modo NORMAL
+[04:21:49][LOADER] CPU preparado para ejecucion:
+[04:21:49][LOADER]   RB=700, RL=1950, PC=0 (logico)
+[04:21:49][LOADER]   RX=1999, SP=1999
+[04:21:49][CPU] Iniciando ejecucion en modo normal
+[04:21:49][CPU] [Ciclo 0] Iniciando ejecucion del CPU
+[04:21:49][CPU] [Ciclo 0] FETCH-DECODE: Op=17 Dir=0 Val=00020 en PC=00000
+[04:21:49][CPU] [Ciclo 0] Timer configurado: interrupcion cada 20 ciclos
+[04:21:49][CPU] [Ciclo 1] FETCH-DECODE: Op=04 Dir=1 Val=00000 en PC=00001
+[04:21:49][CPU] [Ciclo 2] FETCH-DECODE: Op=04 Dir=1 Val=00000 en PC=00002
+[04:21:49][CPU] [Ciclo 3] FETCH-DECODE: Op=04 Dir=1 Val=00000 en PC=00003
+[04:21:49][CPU] [Ciclo 4] FETCH-DECODE: Op=17 Dir=0 Val=99999 en PC=00004
+[04:21:49][CPU] [Ciclo 0] Timer configurado: interrupcion cada 99999 ciclos
+[04:21:49][CPU] [Ciclo 1] FETCH-DECODE: Op=04 Dir=1 Val=00001 en PC=00005
+[04:21:49][CPU] [Ciclo 2] FETCH-DECODE: Op=13 Dir=0 Val=00000 en PC=00006
+[04:21:49][CPU] [Ciclo 2] SVC: Llamada al sistema
+[04:21:49][CPU] [Ciclo 2] Guardando contexto en la pila...
+[04:21:49][CPU] [Ciclo 2] Contexto guardado exitosamente
+[04:21:49][INT] Ciclo 2 | Interrupcion 2 (RECUPERABLE): Llamada al sistema (SVC)
+[04:21:49][CPU] Ejecucion terminada por SVC (Fase 1 no tiene SO para continuar)
+[04:21:49][CPU] [Ciclo 3] Devolviendo control a la consola
+[04:21:49][CPU] Ejecucion normal finalizada
+[04:21:49][SIS] Ejecucion finalizada
+[04:21:49][SIS] Comando recibido: reg
+[04:21:49][SIS] Comando recibido: salir
+[04:21:49][SIS] Usuario solicito salir
+[04:21:49][SIS] Finalizando maquina virtual
+ FIN DEL LOG
+ Finalizado: 04:21:49
