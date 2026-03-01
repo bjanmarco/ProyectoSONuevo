@@ -1,0 +1,71 @@
+
+[LOGGER] Log creado: maquina_virtual.log
+
+ INICIANDO BOOTSTRAP DEL SO 
+
+[BOOTSTRAP] Cargando nucleo y componentes
+[MEMORIA] Inicializada: 2000 posiciones, SO: 0-299, Usuario: 300-1999
+[DISCO] Disco inicializado: 10 cilindros, 10 pistas, 100 sectores
+[DISCO] Estructura: 9 caracteres por sector
+[DMA] Controlador DMA inicializado
+[BOOTSTRAP] Componentes de hardware verificados OK.
+[BOOTSTRAP] Sistema Operativo listo. Sesion de usuario iniciada.
+
+ COMANDOS DISPONIBLES 
+ ejecutar <p1> <p2>...  - Carga los programas en BCP y los ejecuta
+ memestat               - Estadisticas de uso de la Memoria Principal
+ ps                     - Muestra la tabla de procesos del Sistema
+ registros (reg)        - Muestra los registros                   
+ reiniciar              - Reinicia la maquina virtual             
+ ayuda (help)           - Muestra los comandos disponibles        
+ salir (exit, apagar)   - Salir del simulador                     
+
+MV> [SISTEMA] Cargando caso1.txt...
+[SISTEMA] Cargando caso2.txt...
+[SISTEMA] Cargando caso3.txt...
+[SISTEMA] Cargando caso4.txt...
+[SISTEMA] Cargando caso5.txt...
+[SISTEMA] Cargando caso6.txt...
+[SISTEMA] 6 programa(s) cargado(s) exitosamente.
+[SISTEMA] Iniciando ejecucion (Turno Rotatorio)...
+
+[INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
+[INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
+[INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
+[INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
+[INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
+[INT] Ciclo 3 | Interrupcion 2 (RECUPERABLE): Llamada al sistema (SVC)
+[SYSCALL] SYS_EXIT: Proceso finalizado con estado 0
+[INT] Ciclo 5 | Interrupcion 2 (RECUPERABLE): Llamada al sistema (SVC)
+[SYSCALL] SYS_EXIT (Legacy): Codigo 10 en AC no soportado. Forzando terminacion.
+[INT] Ciclo 22 | Interrupcion 2 (RECUPERABLE): Llamada al sistema (SVC)
+[SYSCALL] SYS_EXIT (Legacy): Codigo 0 en AC no soportado. Forzando terminacion.
+[INT] Ciclo 5 | Interrupcion 2 (RECUPERABLE): Llamada al sistema (SVC)
+[SYSCALL] SYS_EXIT (Legacy): Codigo 15 en AC no soportado. Forzando terminacion.
+[DMA] Iniciando transferencia en hilo separado...
+[DMA] Hilo iniciado - Pista=1, Cilindro=1, Sector=1, Dir=0, Mem=80
+[DMA] Operacion: LECTURA (Disco -> Memoria)
+[DISCO] Lectura exitosa: Cilindro=1, Pista=1, Sector=1
+[DMA] Datos transferidos a memoria[80]: 0
+[DMA] Transferencia completada - Estado: EXITO
+[DMA] Interrupcion INT_IO_DONE generada
+[INT] Ciclo 6 | Interrupcion 4 (RECUPERABLE): Operacion E/S completada
+[DMA] Iniciando transferencia en hilo separado...
+[DMA] Hilo iniciado - Pista=1, Cilindro=1, Sector=1, Dir=1, Mem=80
+[DMA] Operacion: ESCRITURA (Memoria -> Disco)
+[DMA] Dato leido de memoria[80]: 0
+[DISCO] Escritura exitosa: Cilindro=1, Pista=1, Sector=1
+[DMA] Transferencia completada - Estado: EXITO
+[DMA] Interrupcion INT_IO_DONE generada
+[INT] Ciclo 10 | Interrupcion 4 (RECUPERABLE): Operacion E/S completada
+[INT] Ciclo 12 | Interrupcion 2 (RECUPERABLE): Llamada al sistema (SVC)
+[SYSCALL] SYS_EXIT (Legacy): Codigo 639 en AC no soportado. Forzando terminacion.
+
+[SISTEMA] Ejecucion finalizada.
+
+MV> Saliendo...
+
+[SISTEMA] Finalizando maquina virtual...
+[MEMORIA] Recursos liberados
+[LOGGER] Log finalizado.
+[SISTEMA] Hasta luego!

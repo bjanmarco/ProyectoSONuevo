@@ -29,8 +29,11 @@ void finalizarMemoria();
 // al terminar hace post() para liberarlo
 Palabra leerMemoria(int direccion);
 
-// escribe en la memoria
+// Escribe en la memoria
 // si escribes sin permiso (fuera de tu RB/RL) no hace nada
 void escribirMemoria(int direccion, Palabra dato);
 
-#endif 
+// Muestra estadisticas de memoria para la consola de usuario
+void mostrarEstadisticasMemoria();
+
+#endif

@@ -51,3 +51,33 @@ void escribirMemoria(int direccion, Palabra dato) {
     memoriaPrincipal[direccion] = dato;
     sem_post(&bloqueoBus); // libera el semáforo
 }
+
+// ============================================
+// Funciones Diagnostico (Comandos Fase 2)
+// ============================================
+
+void mostrarEstadisticasMemoria() {
+    int celdasOcupadasSO = 0;
+    int celdasOcupadasUsuario = 0;
+
+    for (int i = 0; i < TAMANO_MEMORIA; i++) {
+        // "Ocupada" = si el opcode no es 0
+        if (palabraAEntero(memoriaPrincipal[i]) != 0) {
+            if (i < TAMANO_MEMORIA_SO) {
+                celdasOcupadasSO++;
+            } else {
+                celdasOcupadasUsuario++;
+            }
+        }
+    }
+
+    int totalOcupadas = celdasOcupadasSO + celdasOcupadasUsuario;
+    float porcentajeUso = ((float)totalOcupadas / TAMANO_MEMORIA) * 100.0f;
+
+    printf("\n=== ESTADISTICAS DE MEMORIA (memestat) ===\n");
+    printf("Tamano Total de RAM : %d Palabras\n", TAMANO_MEMORIA);
+    printf("Tamano Particion SO : %d Palabras | Posiciones con Dato: %d\n", TAMANO_MEMORIA_SO, celdasOcupadasSO);
+    printf("Tamano Zona Usuario : %d Palabras | Posiciones con Dato: %d\n", TAMANO_MEMORIA - TAMANO_MEMORIA_SO, celdasOcupadasUsuario);
+    printf("Porcentaje de Uso   : %.2f%%\n", porcentajeUso);
+    printf("==========================================\n\n");
+}

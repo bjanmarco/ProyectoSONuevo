@@ -1,0 +1,2 @@
+ejecutar caso1 caso2 caso3 caso4 caso5 caso6
+salir

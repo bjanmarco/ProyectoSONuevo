@@ -10,6 +10,8 @@
 #include "../include/loader.h"
 #include "../include/logger.h"
 #include "../include/cpu.h"
+#include "../include/procesos.h"
+
 
 // constantes de la consola
 #define MAX_COMANDO 256     // tamanio maximo de un comando
@@ -18,9 +20,6 @@
 // variables globales
 // modo de ejecucion: 0 = normal (run), 1 = debug
 int modoDebug = 0;
-
-// indica si hay un programa cargado listo para ejecutar
-int programaCargado = 0;
 
 // referencias externas a registros y variables del CPU
 extern Registros registrosCpu;
@@ -36,7 +35,6 @@ int ejecutarModoDebug();
 // funcion principal
 int main(int argc, char *argv[]) {
     char comando[MAX_COMANDO];
-    char rutaArchivo[MAX_RUTA];
     int salir = 0;
     
     // ignorar argumentos por ahora
@@ -69,6 +67,9 @@ int main(int argc, char *argv[]) {
     
     inicializarCpu();
     logSistema("CPU inicializado (KERNEL)");
+
+    inicializarGestorProcesos();
+    logSistema("Gestor de Procesos (BCP) inicializado (KERNEL)");
     
     printf("[BOOTSTRAP] Componentes de hardware verificados OK.\n");
     
@@ -104,13 +105,14 @@ int main(int argc, char *argv[]) {
         
         // procesar comandos
         
-        // comando: salir / exit / quit
+        // comando: salir / exit / quit / apagar
         if (strcmp(comando, "salir") == 0 || 
             strcmp(comando, "exit") == 0 || 
-            strcmp(comando, "quit") == 0) {
+            strcmp(comando, "quit") == 0 ||
+            strcmp(comando, "apagar") == 0) {
             salir = 1;
             printf("Saliendo...\n");
-            logSistema("Usuario solicito salir");
+            logSistema("Usuario solicito apagar/salir");
         }
         
         // comando: ayuda / help
@@ -119,70 +121,81 @@ int main(int argc, char *argv[]) {
             mostrarAyuda();
         }
         
-        // comando: cargar <archivo> [direccion]
-        else if (strncmp(comando, "cargar ", 7) == 0) {
-            char rutTemp[MAX_RUTA];
-            int dirTemp = -1;
-            int params = sscanf(comando + 7, "%s %d", rutTemp, &dirTemp);
+        // comando: reiniciar
+        else if (strcmp(comando, "reiniciar") == 0) {
+            printf("\n[SISTEMA] Reiniciando maquina virtual...\n");
+            logSistema("Usuario solicito reiniciar");
             
-            if (params >= 2) {
-                strncpy(rutaArchivo, rutTemp, MAX_RUTA - 1);
-                rutaArchivo[MAX_RUTA - 1] = '\0';
-                
-                logLoader("Iniciando carga de: %s (Dir: %d)", rutaArchivo, dirTemp);
-                
-                if (cargarPrograma(rutaArchivo, dirTemp) == 0) {
-                    programaCargado = 1;
-                    printf("[LOADER] Programa cargado exitosamente.\n");
-                    printf("[LOADER] Use 'run' para ejecutar o 'debug' para depurar.\n\n");
-                    logLoader("Programa cargado exitosamente");
-                } else {
-                    printf("[LOADER] ERROR: No se pudo cargar el programa.\n\n");
-                    logLoader("ERROR al cargar programa");
-                }
-            } else {
-                printf("Uso: cargar <archivo> <direccion_memoria>\n");
-            }
+            inicializarMemoria();
+            inicializarDma();
+            inicializarLoader();
+            inicializarCpu();
+            inicializarGestorProcesos();
+            
+            registrosCpu.psw.modoOperacion = MODO_USUARIO;
+            
+            printf("[BOOTSTRAP] Sistema Operativo reiniciado exitosamente.\n\n");
         }
         
-        // comando: run (ejecutar en modo normal)
-        else if (strcmp(comando, "run") == 0) {
-            if (!programaCargado) {
-                printf("ERROR: No hay programa cargado. Use 'cargar <archivo>' primero.\n\n");
-            } else {
+        // comando: ejecutar <prog1> <prog2> ... <progn>
+        else if (strncmp(comando, "ejecutar ", 9) == 0) {
+            // strdup copia el comando para poder usar strtok (que modifica la cadena original)
+            char *copiaComando = strdup(comando + 9);
+            char *programa = strtok(copiaComando, " ");
+            
+            int programasCargadosExtosamente = 0;
 
-                printf("[SISTEMA] Ejecutando programa...\n");
-                logSistema("Iniciando ejecucion en modo NORMAL");
+            // Recorremos todos los parametros enviados por espacio
+            while (programa != NULL) {
+                // Limpiar posibles saltos de linea accidentales si es el ultimo parametro
+                programa[strcspn(programa, "\r\n")] = '\0';
                 
-                modoDebug = 0;
-                prepararEjecucion();
+                if (strlen(programa) > 0) {
+                    // Agregar extension .txt si no la tiene para mayor simplicidad
+                    char rutaConExtension[MAX_RUTA];
+                    if (strstr(programa, ".txt") == NULL) {
+                        snprintf(rutaConExtension, sizeof(rutaConExtension), "%s.txt", programa);
+                    } else {
+                        strncpy(rutaConExtension, programa, MAX_RUTA);
+                    }
+                    
+                    logLoader("Usuario solicito cargar programa: %s", rutaConExtension);
+                    printf("[SISTEMA] Cargando %s...\n", rutaConExtension);
+
+                    // cargarPrograma ahora se encarga de crear el BCP (Proceso)
+                    // Usamos direccionDestino = -1 para que el cargador busque automaticamente donde ponerlo
+                    if (cargarPrograma(rutaConExtension, -1) == 0) {
+                        programasCargadosExtosamente++;
+                    } else {
+                        printf("[ERROR SO] Fallo al cargar '%s'. Verifica si existe o si hay RAM.\n", rutaConExtension);
+                    }
+                }
+                programa = strtok(NULL, " ");
+            }
+            free(copiaComando);
+
+            // Si al menos 1 programa cargo bien, arrancamos la ejecucion del RoundRobin (Planificador)
+            if (programasCargadosExtosamente > 0) {
+                printf("[SISTEMA] %d programa(s) cargado(s) exitosamente.\n", programasCargadosExtosamente);
+                printf("[SISTEMA] Iniciando ejecucion (Turno Rotatorio)...\n\n");
+                logSistema("Iniciando ejecucion de CPU Planificada");
+                
+                // Limpiar la CPU para que no intente ejecutar basura del ciclo o ejecución pasada
+                extern int procesoEnEjecucion;
+                procesoEnEjecucion = -1; // Obligamos a que el SO no guarde un "Contexto Muerto"
+                int primerProceso = planificarSiguienteProceso();
+                if (primerProceso != -1) {
+                    despacharProceso(primerProceso);
+                }
+                
+                // NOTA: Aca mas adelante llamaremos a nuestro planificador (cpu.c o planificador.c)
+                // Por ahora usamos la forma clasica de cpu
                 ejecutarModoNormal();
                 
-                printf("[SISTEMA] Ejecucion finalizada.\n\n");
-                logSistema("Ejecucion finalizada");
-                
-                // programa terminado, permitir cargar otro
-                programaCargado = 0;
-            }
-        }
-        
-        // comando: debug (ejecutar en modo debug)
-        else if (strcmp(comando, "debug") == 0) {
-            if (!programaCargado) {
-                printf("ERROR: No hay programa cargado. Use 'cargar <archivo>' primero.\n\n");
+                printf("\n[SISTEMA] Ejecucion finalizada.\n\n");
+                logSistema("Ejecucion planificada finalizada");
             } else {
-                printf(" EJECUTANDO EN MODO DEBUG\n");
-                printf(" Comandos: [Enter]=siguiente, r=registros, h=ayuda, q=salir\n");
-                logSistema("Iniciando ejecucion en modo DEBUG");
-                
-                modoDebug = 1;
-                prepararEjecucion();
-                ejecutarModoDebug();
-                
-                printf(" EJECUCION FINALIZADA\n\n");
-                logSistema("Ejecucion en debug finalizada");
-                
-                programaCargado = 0;
+                printf("[SISTEMA] No se pudo cargar ningun programa para ejecutar.\n");
             }
         }
         
@@ -190,6 +203,16 @@ int main(int argc, char *argv[]) {
         else if (strcmp(comando, "registros") == 0 || 
                  strcmp(comando, "reg") == 0) {
             mostrarEstadoRegistros();
+        }
+        
+        // comando: memestat
+        else if (strcmp(comando, "memestat") == 0) {
+            mostrarEstadisticasMemoria();
+        }
+        
+        // comando: ps
+        else if (strcmp(comando, "ps") == 0) {
+            mostrarTablaProcesos();
         }
         
 
@@ -218,12 +241,13 @@ int main(int argc, char *argv[]) {
 void mostrarAyuda() {
     printf("\n");
     printf(" COMANDOS DISPONIBLES \n");
-    printf(" cargar <archivo> <dir> - Carga un programa (dir obligatoria)     \n");
-    printf(" run                    - Ejecuta el programa en modo normal      \n");
-    printf(" debug                  - Ejecuta el programa en modo debug       \n");
+    printf(" ejecutar <p1> <p2>...  - Carga los programas en BCP y los ejecuta\n");
+    printf(" memestat               - Estadisticas de uso de la Memoria Principal\n");
+    printf(" ps                     - Muestra la tabla de procesos del Sistema\n");
     printf(" registros (reg)        - Muestra los registros                   \n");
-    printf(" ayuda (help)           - Comandos                                \n");
-    printf(" salir (exit)           - Salir                                   \n");
+    printf(" reiniciar              - Reinicia la maquina virtual             \n");
+    printf(" ayuda (help)           - Muestra los comandos disponibles        \n");
+    printf(" salir (exit, apagar)   - Salir del simulador                     \n");
     printf("\n");
 }
 

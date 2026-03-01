@@ -9,6 +9,7 @@
 #include "../include/logger.h"
 #include "../include/cpu.h"
 
+#include "../include/procesos.h"
 // siguiente direccion de memoria disponible para cargar programas
 // inicia en 300 
 int siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO;
@@ -254,30 +255,37 @@ int cargarPrograma(const char *rutaArchivo, int direccionDestino) {
                i, direccionBase + i, buffer[i].signo, buffer[i].digitos);
     }
 
-    // todo lo que se obtuvo despues e leer y validar se guarda en la estructura
-    strncpy(programaActual.nombre, nombrePrograma, MAX_NOMBRE_PROGRAMA - 1);
-    programaActual.nombre[MAX_NOMBRE_PROGRAMA - 1] = '\0';
-    programaActual.lineaInicio = lineaInicio - 1;  // Convertir a base 0
-    programaActual.numeroPalabras = bufferLen;
-    programaActual.direccionBase = direccionBase;
-    programaActual.direccionLimite = direccionBase + bufferLen - 1;  // ultima instruccion
+    // Instancia del proceso usando nuestro nuevo modulo
+    // Le daremos el tamano del codigo que leyo, MÁS un colchón de pila (stack size = 20)
+    int tamPart = bufferLen + 20; 
+    
+    // Por si queremos normalizar que nadie baje de 85
+    tamPart = (tamPart > 85) ? tamPart : 85;
 
-    logLoader("Programa '%s' cargado exitosamente", programaActual.nombre);
-    logLoader("Instrucciones: %d, RB: %d, RL: %d, PC inicial: %d",
-           bufferLen, programaActual.direccionBase, programaActual.direccionLimite, programaActual.lineaInicio);
+    int nuevoPID = crearProceso(nombrePrograma, direccionBase, direccionBase + tamPart - 1, lineaInicio - 1);
+    
+    if (nuevoPID != -1) {
+        logLoader("Programa '%s' cargado exitosamente bajo el PID %d", nombrePrograma, nuevoPID);
+        logLoader("Instrucciones: %d, RB: %d, RL: %d, PC inicial: %d",
+               bufferLen, direccionBase, direccionBase + tamPart - 1, lineaInicio - 1);
+        
+        resultado = 0; // exito
+    } else {
+        logLoader("ERROR: Se cargo el programa en RAM pero no se pudo crear su bloque BCP.");
+        resultado = 1; // fallo logico
+    }
 
     // Solo actualizar siguienteDireccionDisponible si estamos en modo automatico
     if (!modoManual) {
-        siguienteDireccionDisponible = direccionBase + bufferLen;
+        siguienteDireccionDisponible = direccionBase + tamPart;
     } else {
         // en modo manual, si cargamos "mas alla", podriamos actualizarla tambien para evitar huecos,
         // pero mejor dejarlo intacto o moverlo al final de lo nuevo si es mayor.
         // Por simplicidad, si es manual, no movemos el puntero automatico a menos que lo supere.
-        if (direccionBase + bufferLen > siguienteDireccionDisponible) {
-            siguienteDireccionDisponible = direccionBase + bufferLen;
+        if (direccionBase + tamPart > siguienteDireccionDisponible) {
+            siguienteDireccionDisponible = direccionBase + tamPart;
         }
     }
-    resultado = 0;  // exito
 
 // usamos la salida correcta 
 cleanup:
@@ -317,7 +325,7 @@ void prepararEjecucion() {
     // (especialmente si terminaron por error fatal), de lo contrario se dispararian
     // en el primer ciclo del nuevo programa.
     interrupcionPendiente = 0;
-    codigoInterrupcionPendiente = -1;
+    for(int i=0; i<NUM_INTERRUPCIONES; i++) interrupcionesPendientes[i] = 0;
 
     logLoader("CPU preparado para ejecucion:");
     logLoader("  RB=%d, RL=%d, PC=%d (logico)",

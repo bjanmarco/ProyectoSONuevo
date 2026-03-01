@@ -13,7 +13,13 @@ extern int cpuEjecutando;      // bandera: 1 ejecutando, 0 detenido
 extern int contadorCiclos;
 extern int intervaloReloj;     // frecuencia del timer (ciclos)
 extern int interrupcionPendiente;
-extern int codigoInterrupcionPendiente;
+// Arreglo de banderas para permitir el anidamiento de mútiples interrupciones a la vez
+extern int interrupcionesPendientes[NUM_INTERRUPCIONES];
+
+// Definición de Tipo para el Vector de Interrupciones
+typedef int (*RutinaManejadora)(void);
+// Arreglo que hace de Vector Real de Punteros a Función C
+extern RutinaManejadora vectorInterrupciones[NUM_INTERRUPCIONES];
 
 // funciones para arrancar y controlar el CPU
 
@@ -29,9 +35,11 @@ void faseDecode(); // entiende que es
 int faseExecute(); // la hace
 
 
-// esta es la funcion central que decide que hacer cuando ocurre una interrupcion
-// recibe el codigo del problema y actua en consecuencia (si es fatal mata el proceso)
-int manejarInterrupcion(int codigoInterrupcion);
+// inicializa el vector de punteros a la funcion recien creados
+void inicializarVectorInterrupciones();
+
+// El nuevo manejador procesará y limpiará todas las banderas pendientes jerárquicamente
+int procesarInterrupcionesPendientes();
 
 // guarda el estado actual en la pila (Stack) del sistema
 void guardarContexto();

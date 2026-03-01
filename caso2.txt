@@ -1,5 +1,5 @@
 _start 1
-.NumeroPalabras 11
+.NumeroPalabras 12
 .NombreProg bucle
 04100003 //load 3 (Carga límite del bucle)
 25000000 //psh (Apila el 3. SP apunta a 3)
@@ -11,4 +11,5 @@ _start 1
 05000020 //str 20 (Guarda contador actualizado)
 27000004 // j 4 (Modo directo)
 26000000 //pop (ETIQUETA_FIN: Limpia la pila. Dir Relativa: 9)
+04100000 //load 0 (Limpia AC para prevenir llamar a otra Syscall en OS Fase 2)
 13000000 //svc (Termina)
