@@ -18,10 +18,31 @@ typedef struct {
     int direccionLimite;                // RL (donde termina)
 } InfoPrograma;
 
+// struct para recordar archivos cargados en el disco duro (FAT simulada)
+typedef struct {
+    char nombre[MAX_NOMBRE_PROGRAMA];
+    int lineaInicio;                    // _start
+    int numeroPalabras;                 // numero de instrucciones
+    int cilindroInicio;
+    int pistaInicio;
+    int sectorInicio;
+    int ocupado;                        // 1 si tiene un programa, 0 si esta libre
+} DirectorioPrograma;
+
+
 // variables globales
 // con esta variable recuerda cual es la proxima celda libre de RAM
 // para que si cargamos varios programas no se pisen entre ellos.
 extern int siguienteDireccionDisponible;
+
+// Indice global de la posicion en disco para grabar el siguiente archivo
+extern int siguienteCilindroDisponible;
+extern int siguientePistaDisponible;
+extern int siguienteSectorDisponible;
+
+// Arreglo FAT
+#define MAX_PROGRAMAS_DISCO 20
+extern DirectorioPrograma directorioDisco[MAX_PROGRAMAS_DISCO];
 
 extern InfoPrograma programaActual;
 
@@ -30,11 +51,14 @@ extern InfoPrograma programaActual;
 // reinicia el puntero de "proxima direccion libre" (normalmente a 300).
 void inicializarLoader();
 
-// la funcion central
-// abre el archivo.
-// lee linea por linea
-// escribe en memoriaPrincipal
-// si direccionDestino es -1, decide el solo donde ponerlo
+// Funciones divididas de Loader (Requisito Arquitectura Archivo -> Disco -> RAM)
+// 1. Lee el .txt, lo valida estrictamente y lo escribe en el disco duro
+int cargarProgramaEnDisco(const char *rutaArchivo);
+
+// 2. Busca el programa en el disco duro y lo vierte a la RAM asignada, creando su PCB
+int cargarProgramaEnMemoria(const char *nombrePrograma);
+
+// (Deprecada, mantenida por compatibilidad temporal)
 int cargarPrograma(const char *rutaArchivo, int direccionDestino);
 
 // configura los registros del CPU (PC, RB, RL, SP) usando la info

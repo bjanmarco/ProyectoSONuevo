@@ -4,7 +4,7 @@
 #include "hardware.h"
 #include "loader.h"
 
-// Estados obligatorios de un proceso segun la Fase 1
+// estados obligatorios de un proceso
 #define ESTADO_NUEVO       0
 #define ESTADO_LISTO       1
 #define ESTADO_EJECUCION   2

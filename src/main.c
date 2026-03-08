@@ -162,12 +162,20 @@ int main(int argc, char *argv[]) {
                     logLoader("Usuario solicito cargar programa: %s", rutaConExtension);
                     printf("[SISTEMA] Cargando %s...\n", rutaConExtension);
 
-                    // cargarPrograma ahora se encarga de crear el BCP (Proceso)
-                    // Usamos direccionDestino = -1 para que el cargador busque automaticamente donde ponerlo
-                    if (cargarPrograma(rutaConExtension, -1) == 0) {
-                        programasCargadosExtosamente++;
+                    // NUEVA ARQUITECTURA: 1. Archivo -> Disco Duro  2. Disco Duro -> RAM
+                    
+                    // Paso 1: Intentar cargarlo en Disco (Si ya está, lo omite amigablemente)
+                    if (cargarProgramaEnDisco(rutaConExtension) == 0) {
+                        
+                        // Paso 2: Volcarlo explícitamente desde el Disco hacia la Memoria RAM
+                        if (cargarProgramaEnMemoria(rutaConExtension) == 0) {
+                            programasCargadosExtosamente++;
+                        } else {
+                            printf("[ERROR SO] Fallo al extraer '%s' desde el Disco a la RAM.\n", rutaConExtension);
+                        }
+                        
                     } else {
-                        printf("[ERROR SO] Fallo al cargar '%s'. Verifica si existe o si hay RAM.\n", rutaConExtension);
+                        printf("[ERROR SO] Fallo crítico al escribir '%s' en el Disco Duro. Verifique sintaxis.\n", rutaConExtension);
                     }
                 }
                 programa = strtok(NULL, " ");

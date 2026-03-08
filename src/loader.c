@@ -9,10 +9,20 @@
 #include "../include/logger.h"
 #include "../include/cpu.h"
 
+#include "../include/disco.h"
 #include "../include/procesos.h"
+
 // siguiente direccion de memoria disponible para cargar programas
 // inicia en 300 
 int siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO;
+
+// Indice global de la posicion en disco para grabar el siguiente archivo
+int siguienteCilindroDisponible = 0;
+int siguientePistaDisponible = 0;
+int siguienteSectorDisponible = 0;
+
+// Arreglo FAT
+DirectorioPrograma directorioDisco[MAX_PROGRAMAS_DISCO];
 
 // esta es el struct de la info el programa.
 InfoPrograma programaActual;
@@ -35,22 +45,47 @@ static void limpiarProgramaActual() {
 
 void inicializarLoader() {
     siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO; // partimos de la base del usuario
+    siguienteCilindroDisponible = 0;
+    siguientePistaDisponible = 0;
+    siguienteSectorDisponible = 0;
+    
+    // Limpiar el arreglo FAT
+    for (int i = 0; i < MAX_PROGRAMAS_DISCO; i++) {
+        directorioDisco[i].ocupado = 0;
+    }
+
     limpiarProgramaActual();
-    logLoader("Loader inicializado. Direccion base: %d", 
+    logLoader("Loader inicializado. Direccion base RAM: %d", 
     // usamos el Macro El atajo para imprimir el valor de la siguiente direccion disponible
            siguienteDireccionDisponible);
 }
 
-int cargarPrograma(const char *rutaArchivo, int direccionDestino) {
+int cargarProgramaEnDisco(const char *rutaArchivo) {
     FILE *archivo = NULL;
     char linea[MAX_LINEA];
     int lineaInicio = -1, numeroPalabrasHeader = -1;
     char nombrePrograma[MAX_NOMBRE_PROGRAMA] = "";
-    Palabra instruccion;
-    long valorInstruccion;
     int resultado = 1;  // por defecto error, cambia a 0 si todo sale bien
 
-    // buffer temporal para validar antes de escribir a memoria
+    // Buscar espacio libre en el Directorio FAT
+    int indiceFAT = -1;
+    for (int i = 0; i < MAX_PROGRAMAS_DISCO; i++) {
+        if (!directorioDisco[i].ocupado) {
+            indiceFAT = i;
+            break;
+        } else if (strcmp(directorioDisco[i].nombre, rutaArchivo) == 0) {
+            // Ya está listado en el FAT
+            logLoader("Programa '%s' ya existe en Disco Duro. Omitiendo carga.", rutaArchivo);
+            return 0; // Exito automatico
+        }
+    }
+
+    if (indiceFAT == -1) {
+        logLoader("ERROR: DiscoFAT lleno, maximo %d programas.", MAX_PROGRAMAS_DISCO);
+        return 1;
+    }
+
+    // buffer temporal para validar antes de escribir
     Palabra *buffer = NULL;
     int bufferCap = 0, bufferLen = 0;
 
@@ -63,235 +98,206 @@ int cargarPrograma(const char *rutaArchivo, int direccionDestino) {
         return 1;
     }
 
-    // leer y validar el archivo con while para que sea linea por linea (no escribir en memoria aún)
+    // leer y validar el archivo
     while (fgets(linea, MAX_LINEA, archivo) != NULL) {
-        // fgets incluye el salto por eso luego se elimina
-        linea[strcspn(linea, "\n")] = '\0';  // eliminar salto de linea y lo cambia por un fin de cadena \0
+        linea[strcspn(linea, "\n")] = '\0';  // eliminar salto de linea
 
-        // ignorar lineas vacias y comentarios
-        if (strlen(linea) == 0 || linea[0] == '/' || linea[0] == '#') continue;
-
-        // parsear _start
-        // y bueno strncmp sirve para comparar strings le dices con que quiere comparar y hasta onde debe comparar
-        // si es igual entra al if, y si no error
-        if (strncmp(linea, "_start", 6) == 0) {
-            if (sscanf(linea, "_start %d", &lineaInicio) != 1) {
-                 // sscanf lee datos de una linea y los compara con lo que le pides
-                logLoader("ERROR: _start invalido");
-                goto cleanup; // si hay error salgo, pero antes libero todo lo que puse (salida correcta)
+        // ignorar lineas vacias y comentarios explicitos al inicio
+        if (strlen(linea) == 0 || linea[0] == '/' || linea[0] == '#' || linea[0] == '.' || strncmp(linea, "_start", 6) == 0) {
+            // parsear metadata especial antes de continuar
+            if (strncmp(linea, "_start", 6) == 0) {
+                sscanf(linea, "_start %d", &lineaInicio);
+            } else if (strncmp(linea, ".NumeroPalabras", 15) == 0) {
+                sscanf(linea, ".NumeroPalabras %d", &numeroPalabrasHeader);
+            } else if (strncmp(linea, ".NombreProg", 11) == 0) {
+                sscanf(linea, ".NombreProg %49s", nombrePrograma);
+            } else if (linea[0] == '.' && strlen(linea) == 1) {
+                break; // fin de programa
             }
-            logLoader("_start = %d", lineaInicio);
             continue;
-        }
-
-        // parsear .NumeroPalabras
-        if (strncmp(linea, ".NumeroPalabras", 15) == 0) {
-            if (sscanf(linea, ".NumeroPalabras %d", &numeroPalabrasHeader) != 1) {
-                logLoader("ERROR: .NumeroPalabras invalido");
-                goto cleanup; // salida correcta
-            }
-            logLoader("NumeroPalabras (encabezado) = %d", numeroPalabrasHeader);
-            continue;
-        }
-
-        // parsear .NombreProg
-        if (strncmp(linea, ".NombreProg", 11) == 0) {
-            if (sscanf(linea, ".NombreProg %49s", nombrePrograma) != 1) {
-                logLoader("ERROR: .NombreProg invalido");
-                goto cleanup; // salida correcta
-            }
-            logLoader("NombreProg = %s", nombrePrograma);
-            continue;
-        }
-
-        // detectar fin del programa (una linea con solo '.')
-        if (linea[0] == '.' && strlen(linea) == 1) {
-            logLoader("Fin del programa detectado");
-            break;
-        }
-
-        // quitar cualquier comentario ("//") o espacio despues de la instruccion
-        char *comentario = strstr(linea, "//");
-        if (comentario != NULL) {
-            *comentario = '\0';
         }
         
-        // Extraer los primeros caracteres continuos (hasta 9 incluyendo signo y los 8 digitos)
-        // Cortamos en el primer espacio
-        char *espacio = strchr(linea, ' ');
-        if (espacio != NULL) {
-            *espacio = '\0';
-        }
-
-        // ademas, quitar espacios en blanco o tabulaciones al final para no afectar el length
-        int len = strlen(linea);
-        while (len > 0 && (linea[len - 1] == ' ' || linea[len - 1] == '\t' || linea[len - 1] == '\r')) {
-            linea[len - 1] = '\0';
-            len--;
-        }
-
-        // si despues de limpiar comentarios y espacios la linea quedo vacia, la ignoramos
-        if (len == 0) {
-            continue;
-        }
-
-        // si llegamos aqui, esperamos una instruccion (cadena de 8 digitos)
-        int i, ok = 1;
-        for (i = 0; i < len; i++) {
-            if (linea[i] < '0' || linea[i] > '9') { ok = 0; break; }
-            // porque las ir son de 8 digitos
-        }
-        if (!ok || len > 8) {
-            logLoader("ERROR: Instruccion invalida en archivo: '%s'", linea);
-            goto cleanup; // salida correcta
-        }
-
-        // revisamos el primer char para ver si la instruccion empieza explicitamente con un signo
-        int indiceInicio = 0;
+        // Conversión Robusta (Estilo strtoll ignorará sufijos y comentarios tabulados)
+        long valorLargo = strtol(linea, NULL, 10);
+        
+        // Determinar signo manual o extraido del strtol
         int tieneSigno = 0;
-        if (linea[0] == '1' && len == 9) { // es una instruccion negativa explícita (signo 1 + 8 digitos)
+        if (linea[0] == '1' && strlen(linea) >= 9) {
             tieneSigno = 1;
-            indiceInicio = 1;
-        } else if (linea[0] == '0' && len == 9) { // es una instruccion positiva explícita
+            valorLargo = strtol(&linea[1], NULL, 10); 
+        } else if (linea[0] == '0' && strlen(linea) >= 9) {
             tieneSigno = 0;
-            indiceInicio = 1;
+            valorLargo = strtol(&linea[1], NULL, 10);
+        } else if (valorLargo < 0) {
+            tieneSigno = 1;
+            valorLargo = -valorLargo;
         }
 
-        // pasamos lo restante a numero
-        valorInstruccion = atol(&linea[indiceInicio]); // pasa string a long
-        if (valorInstruccion < 0 || valorInstruccion > 99999999L) {
-            logLoader("ERROR: Valor de instruccion fuera de rango o con error de parseo: %ld", valorInstruccion);
-            goto cleanup; // salida correcta
+        // Validaciones estrictas
+        if (valorLargo < 0 || valorLargo > 99999999L) {
+            logLoader("ERROR: Valor de instruccion fuera de rango o con error de parseo: %ld", valorLargo);
+            goto cleanup; 
         }
 
-        // guardar valores en la estructura Palabra
+        Palabra instruccion;
         instruccion.signo = tieneSigno;
-        instruccion.digitos = (int)valorInstruccion;
+        instruccion.digitos = (int)valorLargo;
+
 
         // agregar al buffer dinamico (expandir si es necesario)
         if (bufferLen >= bufferCap) { // el len son las que llevamos y el cap las totales
             int nuevaCap = (bufferCap == 0) ? 16 : bufferCap * 2;
-            // si esta vacia le damos 16 y si no el doble
             Palabra *tmp = (Palabra*)realloc(buffer, nuevaCap * sizeof(Palabra));
             if (tmp == NULL) {
                 logLoader("ERROR: No hay memoria para buffer");
-                goto cleanup; // salida correcta
+                goto cleanup; 
             }
-            buffer = tmp; bufferCap = nuevaCap; // actualizamos
+            buffer = tmp; bufferCap = nuevaCap; 
         }
-        buffer[bufferLen++] = instruccion; // guatdamos y actualizamos el len
+        buffer[bufferLen++] = instruccion; 
     }
 
     fclose(archivo);
-    archivo = NULL;  // marcar como cerrado
+    archivo = NULL; 
 
-    // verificar que se leyeron instrucciones
     if (bufferLen == 0) {
         logLoader("ERROR: No se encontraron instrucciones");
         goto cleanup;
     }
 
-    // determinar direccion base
-    int direccionBase;
-    int modoManual = (direccionDestino != -1);
-
-    if (modoManual) {
-        direccionBase = direccionDestino;
-        if (direccionBase < INICIO_MEMORIA_USUARIO) {
-            logLoader("ERROR: Intento de cargar en zona del SO (0-%d). Direccion solicitada: %d", 
-                      INICIO_MEMORIA_USUARIO - 1, direccionBase);
-            printf("[LOADER] ERROR: Zona reservada para el Sistema Operativo.\n");
-            goto cleanup;
-        }
-    } else {
-        direccionBase = siguienteDireccionDisponible;
-    }
-
-    // verificar espacio en memoria
-    if (direccionBase + bufferLen >= TAMANO_MEMORIA) {
-        logLoader("ERROR: Memoria insuficiente. Fin de programa (%d) excede memoria (%d)", 
-                  direccionBase + bufferLen, TAMANO_MEMORIA);
-        printf("[LOADER] ERROR: El programa no cabe en la memoria restante.\n");
-        goto cleanup;
-    }
-
-    // verificacion de colisiones
-    // verificar si el rango de memoria objetivo ya tiene contenido (distinto de 0)
-    int direccionFin = direccionBase + bufferLen;
-    // reserva de pila: se prohibe cargar en las ultimas 50 posiciones
-    // para garantizar espacio minimo para la pila del sistema.
-    if (direccionFin > TAMANO_MEMORIA - 50) { 
-        logLoader("ERROR: Intento de cargar en zona de PILA (1950-1999). Fin del programa: %d", direccionFin);
-        printf("[LOADER] ERROR: No hay espacio seguro. Las ultimas 50 posiciones estan RESERVADAS para la Pila.\n");
-        goto cleanup;
-    }
-
-    // verificar si hay datos preexistentes en el rango
-    for (int k = 0; k < bufferLen; k++) {
-        Palabra p = leerMemoria(direccionBase + k);
-        if (p.digitos != 0 || p.signo != 0) {
-            logLoader("ERROR: Memoria ocupada en direcccon %d. No se puede cargar.", direccionBase + k);
-            printf("[LOADER] ERROR: Conflicto de memoria en direccion %d. Ya contiene datos.\n", direccionBase + k);
-            goto cleanup; // salto al final para cerrar el archivo
-        }
-    }
     if (numeroPalabrasHeader != -1 && numeroPalabrasHeader != bufferLen) {
         logLoader("ERROR: .NumeroPalabras (%d) no coincide con instrucciones leidas (%d)",
                numeroPalabrasHeader, bufferLen);
-        goto cleanup; // salto al final para cerrar el archivo
+        goto cleanup;
     }
-    // validar _start (base 1, de 1 a bufferLen)
+
     if (lineaInicio < 1 || lineaInicio > bufferLen) {
         logLoader("ERROR: _start invalido o fuera de rango (debe ser 1..%d)", bufferLen);
-        goto cleanup; // salto al final para cerrar el archivo
+        goto cleanup;
     }
 
-    // escribir buffer a memoria (commit)
-    int i;
-    // direccionBase ya fue calculada arriba
-    for (i = 0; i < bufferLen; i++) {
-        escribirMemoria(direccionBase + i, buffer[i]);
-        logLoader("Instruccion %d cargada en direccion %d: %d%07d",
-               i, direccionBase + i, buffer[i].signo, buffer[i].digitos);
+    // --- NUEVO: VOLCADO A DISCO DURO (VERIFICANDO CAPACIDAD) ---
+    // Chequear si caben las instrucciones
+    int requeridosSectores = bufferLen;
+    int disponible = (DISCO_CILINDROS * DISCO_PISTAS * DISCO_SECTORES) - 
+                     ((siguienteCilindroDisponible * DISCO_PISTAS * DISCO_SECTORES) + 
+                      (siguientePistaDisponible * DISCO_SECTORES) + 
+                      siguienteSectorDisponible);
+                      
+    if (requeridosSectores > disponible) {
+        logLoader("ERROR: Disdo Duro Lleno.");
+        goto cleanup;
     }
 
-    // Instancia del proceso usando nuestro nuevo modulo
-    // Le daremos el tamano del codigo que leyo, MÁS un colchón de pila (stack size = 20)
-    int tamPart = bufferLen + 20; 
-    
-    // Por si queremos normalizar que nadie baje de 85
-    tamPart = (tamPart > 85) ? tamPart : 85;
+    // Escribir en la FAT
+    strcpy(directorioDisco[indiceFAT].nombre, rutaArchivo);
+    directorioDisco[indiceFAT].lineaInicio = lineaInicio;
+    directorioDisco[indiceFAT].numeroPalabras = bufferLen;
+    directorioDisco[indiceFAT].cilindroInicio = siguienteCilindroDisponible;
+    directorioDisco[indiceFAT].pistaInicio = siguientePistaDisponible;
+    directorioDisco[indiceFAT].sectorInicio = siguienteSectorDisponible;
+    directorioDisco[indiceFAT].ocupado = 1;
 
-    int nuevoPID = crearProceso(nombrePrograma, direccionBase, direccionBase + tamPart - 1, lineaInicio - 1);
-    
-    if (nuevoPID != -1) {
-        logLoader("Programa '%s' cargado exitosamente bajo el PID %d", nombrePrograma, nuevoPID);
-        logLoader("Instrucciones: %d, RB: %d, RL: %d, PC inicial: %d",
-               bufferLen, direccionBase, direccionBase + tamPart - 1, lineaInicio - 1);
+    // Escribir cada instrucción al disco simulado
+    for (int i = 0; i < bufferLen; i++) {
+        char tempStr[10];
+        snprintf(tempStr, sizeof(tempStr), "%d%08d", buffer[i].signo, buffer[i].digitos);
         
-        resultado = 0; // exito
-    } else {
-        logLoader("ERROR: Se cargo el programa en RAM pero no se pudo crear su bloque BCP.");
-        resultado = 1; // fallo logico
-    }
-
-    // Solo actualizar siguienteDireccionDisponible si estamos en modo automatico
-    if (!modoManual) {
-        siguienteDireccionDisponible = direccionBase + tamPart;
-    } else {
-        // en modo manual, si cargamos "mas alla", podriamos actualizarla tambien para evitar huecos,
-        // pero mejor dejarlo intacto o moverlo al final de lo nuevo si es mayor.
-        // Por simplicidad, si es manual, no movemos el puntero automatico a menos que lo supere.
-        if (direccionBase + tamPart > siguienteDireccionDisponible) {
-            siguienteDireccionDisponible = direccionBase + tamPart;
+        escribirSectorDisco(siguientePistaDisponible, siguienteCilindroDisponible, siguienteSectorDisponible, tempStr);
+        
+        // Aritmetica de cabezales del disco
+        siguienteSectorDisponible++;
+        if (siguienteSectorDisponible >= DISCO_SECTORES) {
+            siguienteSectorDisponible = 0;
+            siguientePistaDisponible++;
+            if (siguientePistaDisponible >= DISCO_PISTAS) {
+                siguientePistaDisponible = 0;
+                siguienteCilindroDisponible++;
+            }
         }
     }
+
+    logLoader("Carga en Disco completa. (FAT_ID: %d)", indiceFAT);
+    resultado = 0; // Exito
+
 
 // usamos la salida correcta 
 cleanup:
     if (archivo != NULL) fclose(archivo);
     free(buffer);
     return resultado;
+}
+
+int cargarProgramaEnMemoria(const char *nombrePrograma) {
+    int logicoID = -1;
+    for (int i = 0; i < MAX_PROGRAMAS_DISCO; i++) {
+        if (directorioDisco[i].ocupado && strcmp(directorioDisco[i].nombre, nombrePrograma) == 0) {
+            logicoID = i;
+            break;
+        }
+    }
+
+    if (logicoID == -1) {
+        logLoader("ERROR: %s no se encuentra en el disco duro.", nombrePrograma);
+        printf("[LOADER] ERROR: Archivo no se encuentra en Disco: %s\n", nombrePrograma);
+        return 1;
+    }
+
+    DirectorioPrograma progFAT = directorioDisco[logicoID];
+
+    int direccionBase = siguienteDireccionDisponible;
+    int direccionFin = direccionBase + progFAT.numeroPalabras;
+
+    // Verificar memoria
+    if (direccionFin >= TAMANO_MEMORIA - 50) {
+        logLoader("ERROR: Memoria RAM insuficiente para volcar %s desde Disco.", nombrePrograma);
+        printf("[LOADER] ERROR: No hay espacio seguro. Pilas en riesgo.\n");
+        return 1;
+    }
+
+    // Volcado de Disco Duro a RAM
+    int s_cilindro = progFAT.cilindroInicio;
+    int s_pista = progFAT.pistaInicio;
+    int s_sector = progFAT.sectorInicio;
+    
+    char sectorCrudo[TAMANO_SECTOR + 1]; // +1 para el nulo terminador 
+
+    for (int i = 0; i < progFAT.numeroPalabras; i++) {
+        leerSectorDisco(s_pista, s_cilindro, s_sector, sectorCrudo);
+        sectorCrudo[TAMANO_SECTOR] = '\0';
+        
+        Palabra p;
+        p.signo = sectorCrudo[0] - '0';
+        p.digitos = atoi(&sectorCrudo[1]);
+        
+        escribirMemoria(direccionBase + i, p);
+
+        // Aritmetica manual de avance
+        s_sector++;
+        if (s_sector >= DISCO_SECTORES) {
+            s_sector = 0;
+            s_pista++;
+            if (s_pista >= DISCO_PISTAS) {
+                s_pista = 0;
+                s_cilindro++;
+            }
+        }
+    }
+
+    // Instancia del proceso BCP
+    int tamPart = progFAT.numeroPalabras + 20; 
+    tamPart = (tamPart > 85) ? tamPart : 85;
+
+    int nuevoPID = crearProceso(progFAT.nombre, direccionBase, direccionBase + tamPart - 1, progFAT.lineaInicio - 1);
+    
+    if (nuevoPID != -1) {
+        logLoader("Programa '%s' pasado de DISCO a RAM con PID %d", progFAT.nombre, nuevoPID);
+        siguienteDireccionDisponible = direccionBase + tamPart;
+        return 0; 
+    } else {
+        logLoader("ERROR RAM: Fallo creacion BCP.");
+        return 1; 
+    }
 }
 
 void prepararEjecucion() {

@@ -1,0 +1,8 @@
+_start 1
+.NumeroPalabras 4
+.NombreProg rr_mix
+
+25000000        // push
+04100009        // load a AC
+26000000        // pop
+13000000        // termina_prog

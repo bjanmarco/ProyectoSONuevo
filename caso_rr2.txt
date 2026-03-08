@@ -1,0 +1,10 @@
+_start 1
+.NumeroPalabras 6
+.NombreProg rr_dormir
+
+04100000    // load constante 0 (AC=0)
+00100005    // add constante 5  (AC=5)
+26000002    // pop a alguna parte basura (consume CPU extra)
+00100005    // add constante 5  (AC=10)
+05000020    // store en dir 20
+13000000    // exit (Syscall Legacy)
