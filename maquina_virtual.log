@@ -1,127 +1,159 @@
- Iniciado: 06:51:01
+ Iniciado: 17:13:49
  Archivo: maquina_virtual.log
-[06:51:01][SIS] Maquina virtual iniciada
-[06:51:01][SIS] Memoria inicializada (KERNEL)
-[06:51:01][SIS] Disco inicializado (KERNEL)
-[06:51:01][SIS] DMA inicializado (KERNEL)
-[06:51:01][LOADER] Loader inicializado. Direccion base: 300
-[06:51:01][SIS] Loader inicializado (KERNEL)
-[06:51:01][CPU] [Ciclo 0] Inicializando CPU...
-[06:51:01][CPU] [Ciclo 0] CPU inicializado correctamente
-[06:51:01][SIS] CPU inicializado (KERNEL)
-[06:51:01][SIS] Gestor de Procesos (BCP) inicializado (KERNEL)
-[06:51:01][SIS] Sistema cambiado a modo USUARIO
-[06:51:11][SIS] Comando recibido: ejecutar ejemplosvc.txt
-[06:51:11][LOADER] Usuario solicito cargar programa: ejemplosvc.txt
-[06:51:11][LOADER] Intentando cargar: ejemplosvc.txt
-[06:51:11][LOADER] _start = 1
-[06:51:11][LOADER] Instruccion 0 cargada en direccion 300: 025100050
-[06:51:11][LOADER] Instruccion 1 cargada en direccion 301: 04100002
-[06:51:11][LOADER] Instruccion 2 cargada en direccion 302: 013000000
-[06:51:11][LOADER] Instruccion 3 cargada en direccion 303: 025100005
-[06:51:11][LOADER] Instruccion 4 cargada en direccion 304: 04100004
-[06:51:11][LOADER] Instruccion 5 cargada en direccion 305: 013000000
-[06:51:11][LOADER] Instruccion 6 cargada en direccion 306: 025100100
-[06:51:11][LOADER] Instruccion 7 cargada en direccion 307: 04100002
-[06:51:11][LOADER] Instruccion 8 cargada en direccion 308: 013000000
-[06:51:11][LOADER] Instruccion 9 cargada en direccion 309: 025100000
-[06:51:11][LOADER] Instruccion 10 cargada en direccion 310: 04100001
-[06:51:11][LOADER] Instruccion 11 cargada en direccion 311: 013000000
-[06:51:11][SIS] Proceso [] (ID: 1) creado -> Estado NUEVO
-[06:51:11][SIS] Proceso (ID: 1) cambio estado NUEVO -> LISTO
-[06:51:11][LOADER] Programa '' cargado exitosamente bajo el PID 1
-[06:51:11][LOADER] Instrucciones: 12, RB: 300, RL: 384, PC inicial: 0
-[06:51:11][SIS] Iniciando ejecucion de CPU Planificada
-[06:51:11][SIS] Proceso (ID: 1) cambio estado LISTO -> EN EJECUCION
-[06:51:11][SIS] >>> DESPACHO: Entrante Proceso ID 1 <<<
-[06:51:11][CPU] Iniciando ejecucion en modo normal
-[06:51:11][CPU] [Ciclo 0] Iniciando ejecucion planificada del CPU (RR con q=2)
-[06:51:11][CPU] [Ciclo 0] FETCH-DECODE: Op=25 Dir=1 Val=00050 en PC=00000
-[06:51:11][CPU] [Ciclo 0] PSH: Apilando operando 50
-[06:51:11][CPU] [Ciclo 1] FETCH-DECODE: Op=04 Dir=1 Val=00002 en PC=00001
-[06:51:11][CPU] [Ciclo 0] Guardando contexto en la pila...
-[06:51:11][CPU] [Ciclo 0] Contexto guardado exitosamente
-[06:51:11][INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
-[06:51:11][SIS] Proceso (ID: 1) cambio estado EN EJECUCION -> LISTO
-[06:51:11][SIS] Proceso (ID: 1) cambio estado LISTO -> EN EJECUCION
-[06:51:11][SIS] >>> DESPACHO: Entrante Proceso ID 1 <<<
-[06:51:11][CPU] [Ciclo 0] Retornando de interrupcion de Quantum (Contexto provisto por Despachador BCP)
-[06:51:11][CPU] [Ciclo 0] FETCH-DECODE: Op=13 Dir=0 Val=00000 en PC=00002
-[06:51:11][CPU] [Ciclo 0] SVC: Llamada al sistema
-[06:51:11][CPU] [Ciclo 1] Guardando contexto en la pila...
-[06:51:11][CPU] [Ciclo 1] Contexto guardado exitosamente
-[06:51:11][INT] Ciclo 1 | Interrupcion 2 (RECUPERABLE): Llamada al sistema (SVC)
-[06:51:11][CPU] [Ciclo 1] SYS_PRINT: Proceso 1 solicita imprimir el valor: 50
-[06:51:11][CPU] [Ciclo 1] Restaurando contexto desde la pila...
-[06:51:11][CPU] [Ciclo 1] Contexto restaurado exitosamente
-[06:51:11][CPU] [Ciclo 1] FETCH-DECODE: Op=25 Dir=1 Val=00005 en PC=00003
-[06:51:11][CPU] [Ciclo 1] PSH: Apilando operando 5
-[06:51:11][CPU] [Ciclo 0] Guardando contexto en la pila...
-[06:51:11][CPU] [Ciclo 0] Contexto guardado exitosamente
-[06:51:11][INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
-[06:51:11][SIS] Proceso (ID: 1) cambio estado EN EJECUCION -> LISTO
-[06:51:11][SIS] Proceso (ID: 1) cambio estado LISTO -> EN EJECUCION
-[06:51:11][SIS] >>> DESPACHO: Entrante Proceso ID 1 <<<
-[06:51:11][CPU] [Ciclo 0] Retornando de interrupcion de Quantum (Contexto provisto por Despachador BCP)
-[06:51:11][CPU] [Ciclo 0] FETCH-DECODE: Op=04 Dir=1 Val=00004 en PC=00004
-[06:51:11][CPU] [Ciclo 1] FETCH-DECODE: Op=13 Dir=0 Val=00000 en PC=00005
-[06:51:11][CPU] [Ciclo 1] SVC: Llamada al sistema
-[06:51:11][CPU] [Ciclo 0] Guardando contexto en la pila...
-[06:51:11][CPU] [Ciclo 0] Contexto guardado exitosamente
-[06:51:11][INT] Ciclo 0 | Interrupcion 2 (RECUPERABLE): Llamada al sistema (SVC)
-[06:51:11][CPU] [Ciclo 0] SYS_SLEEP: Proceso 1 solicito dormir 5 tics
-[06:51:11][SIS] Proceso (ID: 1) cambio estado EN EJECUCION -> DORMIDO
-[06:51:11][CPU] [Ciclo 0] Guardando contexto en la pila...
-[06:51:11][CPU] [Ciclo 0] Contexto guardado exitosamente
-[06:51:11][INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
-[06:51:11][CPU] [Ciclo 0] Timer: No hay mas procesos listos. Se cede.
-[06:51:11][CPU] [Ciclo 0] Retornando de interrupcion de Quantum (Contexto provisto por Despachador BCP)
-[06:51:11][CPU] [Ciclo 0] SO entrando en modo IDLE (Tics muertos)...
-[06:51:11][SIS] Proceso (ID: 1) desperto de su Syscall SLEEP. Pasa a LISTO.
-[06:51:11][SIS] Proceso (ID: 1) cambio estado DORMIDO -> LISTO
-[06:51:11][SIS] Proceso (ID: 1) cambio estado LISTO -> EN EJECUCION
-[06:51:11][SIS] >>> DESPACHO: Entrante Proceso ID 1 <<<
-[06:51:11][CPU] [Ciclo 0] FETCH-DECODE: Op=25 Dir=1 Val=00100 en PC=00006
-[06:51:11][CPU] [Ciclo 0] PSH: Apilando operando 100
-[06:51:11][CPU] [Ciclo 1] FETCH-DECODE: Op=04 Dir=1 Val=00002 en PC=00007
-[06:51:11][CPU] [Ciclo 0] Guardando contexto en la pila...
-[06:51:11][CPU] [Ciclo 0] Contexto guardado exitosamente
-[06:51:11][INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
-[06:51:11][SIS] Proceso (ID: 1) cambio estado EN EJECUCION -> LISTO
-[06:51:11][SIS] Proceso (ID: 1) cambio estado LISTO -> EN EJECUCION
-[06:51:11][SIS] >>> DESPACHO: Entrante Proceso ID 1 <<<
-[06:51:11][CPU] [Ciclo 0] Retornando de interrupcion de Quantum (Contexto provisto por Despachador BCP)
-[06:51:11][CPU] [Ciclo 0] FETCH-DECODE: Op=13 Dir=0 Val=00000 en PC=00008
-[06:51:11][CPU] [Ciclo 0] SVC: Llamada al sistema
-[06:51:11][CPU] [Ciclo 1] Guardando contexto en la pila...
-[06:51:11][CPU] [Ciclo 1] Contexto guardado exitosamente
-[06:51:11][INT] Ciclo 1 | Interrupcion 2 (RECUPERABLE): Llamada al sistema (SVC)
-[06:51:11][CPU] [Ciclo 1] SYS_PRINT: Proceso 1 solicita imprimir el valor: 100
-[06:51:11][CPU] [Ciclo 1] Restaurando contexto desde la pila...
-[06:51:11][CPU] [Ciclo 1] Contexto restaurado exitosamente
-[06:51:11][CPU] [Ciclo 1] FETCH-DECODE: Op=25 Dir=1 Val=00000 en PC=00009
-[06:51:11][CPU] [Ciclo 1] PSH: Apilando operando 0
-[06:51:11][CPU] [Ciclo 0] Guardando contexto en la pila...
-[06:51:11][CPU] [Ciclo 0] Contexto guardado exitosamente
-[06:51:11][INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
-[06:51:11][SIS] Proceso (ID: 1) cambio estado EN EJECUCION -> LISTO
-[06:51:11][SIS] Proceso (ID: 1) cambio estado LISTO -> EN EJECUCION
-[06:51:11][SIS] >>> DESPACHO: Entrante Proceso ID 1 <<<
-[06:51:11][CPU] [Ciclo 0] Retornando de interrupcion de Quantum (Contexto provisto por Despachador BCP)
-[06:51:11][CPU] [Ciclo 0] FETCH-DECODE: Op=04 Dir=1 Val=00001 en PC=00010
-[06:51:11][CPU] [Ciclo 1] FETCH-DECODE: Op=13 Dir=0 Val=00000 en PC=00011
-[06:51:11][CPU] [Ciclo 1] SVC: Llamada al sistema
-[06:51:11][CPU] [Ciclo 0] Guardando contexto en la pila...
-[06:51:11][CPU] [Ciclo 0] Contexto guardado exitosamente
-[06:51:11][INT] Ciclo 0 | Interrupcion 2 (RECUPERABLE): Llamada al sistema (SVC)
-[06:51:11][CPU] [Ciclo 0] SYS_EXIT: Proceso finalizado con estado 0
-[06:51:11][SIS] Proceso (ID: 1) cambio estado EN EJECUCION -> TERMINADO
-[06:51:11][CPU] [Ciclo 0] Guardando contexto en la pila...
-[06:51:11][CPU] [Ciclo 0] Contexto guardado exitosamente
-[06:51:11][INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
-[06:51:11][CPU] [Ciclo 0] Timer: No hay mas procesos listos. Se cede.
-[06:51:11][CPU] [Ciclo 0] Retornando de interrupcion de Quantum (Contexto provisto por Despachador BCP)
-[06:51:11][CPU] [Ciclo 0] No hay mas procesos. Todas las tareas finalizadas.
-[06:51:11][CPU] [Ciclo 0] Devolviendo control a la consola
-[06:51:11][CPU] Ejecucion normal finalizada
-[06:51:11][SIS] Ejecucion planificada finalizada
+[17:13:49][SIS] Maquina virtual iniciada
+[17:13:49][SIS] Memoria inicializada (KERNEL)
+[17:13:49][SIS] Disco inicializado (KERNEL)
+[17:13:49][SIS] DMA inicializado (KERNEL)
+[17:13:49][LOADER] Loader inicializado. Direccion base RAM: 300
+[17:13:49][SIS] Loader inicializado (KERNEL)
+[17:13:49][CPU] [Ciclo 0] Inicializando CPU...
+[17:13:49][CPU] [Ciclo 0] CPU inicializado correctamente
+[17:13:49][SIS] CPU inicializado (KERNEL)
+[17:13:49][SIS] Gestor de Procesos (BCP) inicializado (KERNEL)
+[17:13:49][SIS] Sistema cambiado a modo USUARIO
+[17:14:16][SIS] Comando recibido: ejecutar caso_rr1.txt caso_rr2.txt caso_rr3.txt
+[17:14:16][LOADER] Usuario solicito cargar programa: caso_rr1.txt
+[17:14:16][LOADER] Intentando cargar: caso_rr1.txt
+[17:14:16][LOADER] Carga en Disco completa. (FAT_ID: 0)
+[17:14:16][SIS] Proceso [caso_rr1.txt] (ID: 1) creado -> Estado NUEVO
+[17:14:16][SIS] Proceso (ID: 1) cambio estado NUEVO -> LISTO
+[17:14:16][LOADER] Programa 'caso_rr1.txt' pasado de DISCO a RAM con PID 1
+[17:14:16][LOADER] Usuario solicito cargar programa: caso_rr2.txt
+[17:14:16][LOADER] Intentando cargar: caso_rr2.txt
+[17:14:16][LOADER] Carga en Disco completa. (FAT_ID: 1)
+[17:14:16][SIS] Proceso [caso_rr2.txt] (ID: 2) creado -> Estado NUEVO
+[17:14:16][SIS] Proceso (ID: 2) cambio estado NUEVO -> LISTO
+[17:14:16][LOADER] Programa 'caso_rr2.txt' pasado de DISCO a RAM con PID 2
+[17:14:16][LOADER] Usuario solicito cargar programa: caso_rr3.txt
+[17:14:16][LOADER] Intentando cargar: caso_rr3.txt
+[17:14:16][LOADER] Carga en Disco completa. (FAT_ID: 2)
+[17:14:16][SIS] Proceso [caso_rr3.txt] (ID: 3) creado -> Estado NUEVO
+[17:14:16][SIS] Proceso (ID: 3) cambio estado NUEVO -> LISTO
+[17:14:16][LOADER] Programa 'caso_rr3.txt' pasado de DISCO a RAM con PID 3
+[17:14:16][SIS] Iniciando ejecucion de CPU Planificada
+[17:14:16][SIS] Proceso (ID: 1) cambio estado LISTO -> EN EJECUCION
+[17:14:16][SIS] >>> DESPACHO: Entrante Proceso ID 1 <<<
+[17:14:16][CPU] Iniciando ejecucion en modo normal
+[17:14:16][CPU] [Ciclo 0] Iniciando ejecucion planificada del CPU (RR con q=2)
+[17:14:16][CPU] [Ciclo 0] FETCH-DECODE: Op=04 Dir=1 Val=00000 en PC=00000
+[17:14:16][CPU] [Ciclo 1] FETCH-DECODE: Op=00 Dir=1 Val=00001 en PC=00001
+[17:14:16][CPU] [Ciclo 1] SUM: 0 + 1 = 1
+[17:14:16][CPU] [Ciclo 0] Guardando contexto en la pila...
+[17:14:16][CPU] [Ciclo 0] Contexto guardado exitosamente
+[17:14:16][INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
+[17:14:16][SIS] Proceso (ID: 1) cambio estado EN EJECUCION -> LISTO
+[17:14:16][SIS] Proceso (ID: 2) cambio estado LISTO -> EN EJECUCION
+[17:14:16][SIS] >>> FIN QUANTUM: Saliente Proceso ID 1 | Entrante Proceso ID 2 <<<
+[17:14:16][CPU] [Ciclo 0] Retornando de interrupcion de Quantum (Contexto provisto por Despachador BCP)
+[17:14:16][CPU] [Ciclo 0] FETCH-DECODE: Op=04 Dir=1 Val=00000 en PC=00000
+[17:14:16][CPU] [Ciclo 1] FETCH-DECODE: Op=00 Dir=1 Val=00005 en PC=00001
+[17:14:16][CPU] [Ciclo 1] SUM: 0 + 5 = 5
+[17:14:16][CPU] [Ciclo 0] Guardando contexto en la pila...
+[17:14:16][CPU] [Ciclo 0] Contexto guardado exitosamente
+[17:14:16][INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
+[17:14:16][SIS] Proceso (ID: 2) cambio estado EN EJECUCION -> LISTO
+[17:14:16][SIS] Proceso (ID: 3) cambio estado LISTO -> EN EJECUCION
+[17:14:16][SIS] >>> FIN QUANTUM: Saliente Proceso ID 2 | Entrante Proceso ID 3 <<<
+[17:14:16][CPU] [Ciclo 0] Retornando de interrupcion de Quantum (Contexto provisto por Despachador BCP)
+[17:14:16][CPU] [Ciclo 0] FETCH-DECODE: Op=25 Dir=0 Val=00000 en PC=00000
+[17:14:16][CPU] [Ciclo 0] PSH: Apilando AC (0)
+[17:14:16][CPU] [Ciclo 1] FETCH-DECODE: Op=04 Dir=1 Val=00009 en PC=00001
+[17:14:16][CPU] [Ciclo 0] Guardando contexto en la pila...
+[17:14:16][CPU] [Ciclo 0] Contexto guardado exitosamente
+[17:14:16][INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
+[17:14:16][SIS] Proceso (ID: 3) cambio estado EN EJECUCION -> LISTO
+[17:14:16][SIS] Proceso (ID: 1) cambio estado LISTO -> EN EJECUCION
+[17:14:16][SIS] >>> FIN QUANTUM: Saliente Proceso ID 3 | Entrante Proceso ID 1 <<<
+[17:14:16][CPU] [Ciclo 0] Retornando de interrupcion de Quantum (Contexto provisto por Despachador BCP)
+[17:14:16][CPU] [Ciclo 0] FETCH-DECODE: Op=00 Dir=1 Val=00001 en PC=00002
+[17:14:16][CPU] [Ciclo 0] SUM: 1 + 1 = 2
+[17:14:16][CPU] [Ciclo 1] FETCH-DECODE: Op=00 Dir=1 Val=00001 en PC=00003
+[17:14:16][CPU] [Ciclo 1] SUM: 2 + 1 = 3
+[17:14:16][CPU] [Ciclo 0] Guardando contexto en la pila...
+[17:14:16][CPU] [Ciclo 0] Contexto guardado exitosamente
+[17:14:16][INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
+[17:14:16][SIS] Proceso (ID: 1) cambio estado EN EJECUCION -> LISTO
+[17:14:16][SIS] Proceso (ID: 2) cambio estado LISTO -> EN EJECUCION
+[17:14:16][SIS] >>> FIN QUANTUM: Saliente Proceso ID 1 | Entrante Proceso ID 2 <<<
+[17:14:16][CPU] [Ciclo 0] Retornando de interrupcion de Quantum (Contexto provisto por Despachador BCP)
+[17:14:16][CPU] [Ciclo 0] FETCH-DECODE: Op=26 Dir=0 Val=00002 en PC=00002
+[17:14:16][CPU] [Ciclo 1] FETCH-DECODE: Op=00 Dir=1 Val=00005 en PC=00003
+[17:14:16][CPU] [Ciclo 1] SUM: 0 + 5 = 5
+[17:14:16][CPU] [Ciclo 0] Guardando contexto en la pila...
+[17:14:16][CPU] [Ciclo 0] Contexto guardado exitosamente
+[17:14:16][INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
+[17:14:16][SIS] Proceso (ID: 2) cambio estado EN EJECUCION -> LISTO
+[17:14:16][SIS] Proceso (ID: 3) cambio estado LISTO -> EN EJECUCION
+[17:14:16][SIS] >>> FIN QUANTUM: Saliente Proceso ID 2 | Entrante Proceso ID 3 <<<
+[17:14:16][CPU] [Ciclo 0] Retornando de interrupcion de Quantum (Contexto provisto por Despachador BCP)
+[17:14:16][CPU] [Ciclo 0] FETCH-DECODE: Op=26 Dir=0 Val=00000 en PC=00002
+[17:14:16][CPU] [Ciclo 1] FETCH-DECODE: Op=03 Dir=0 Val=00000 en PC=00003
+[17:14:16][CPU] [Ciclo 0] Guardando contexto en la pila...
+[17:14:16][CPU] [Ciclo 0] Contexto guardado exitosamente
+[17:14:16][INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
+[17:14:16][SIS] Proceso (ID: 3) cambio estado EN EJECUCION -> LISTO
+[17:14:16][SIS] Proceso (ID: 1) cambio estado LISTO -> EN EJECUCION
+[17:14:16][SIS] >>> FIN QUANTUM: Saliente Proceso ID 3 | Entrante Proceso ID 1 <<<
+[17:14:16][CPU] [Ciclo 0] Retornando de interrupcion de Quantum (Contexto provisto por Despachador BCP)
+[17:14:16][CPU] [Ciclo 0] FETCH-DECODE: Op=00 Dir=1 Val=00001 en PC=00004
+[17:14:16][CPU] [Ciclo 0] SUM: 3 + 1 = 4
+[17:14:16][CPU] [Ciclo 1] FETCH-DECODE: Op=00 Dir=1 Val=00001 en PC=00005
+[17:14:16][CPU] [Ciclo 1] SUM: 4 + 1 = 5
+[17:14:16][CPU] [Ciclo 0] Guardando contexto en la pila...
+[17:14:16][CPU] [Ciclo 0] Contexto guardado exitosamente
+[17:14:16][INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
+[17:14:16][SIS] Proceso (ID: 1) cambio estado EN EJECUCION -> LISTO
+[17:14:16][SIS] Proceso (ID: 2) cambio estado LISTO -> EN EJECUCION
+[17:14:16][SIS] >>> FIN QUANTUM: Saliente Proceso ID 1 | Entrante Proceso ID 2 <<<
+[17:14:16][CPU] [Ciclo 0] Retornando de interrupcion de Quantum (Contexto provisto por Despachador BCP)
+[17:14:16][CPU] [Ciclo 0] FETCH-DECODE: Op=05 Dir=0 Val=00020 en PC=00004
+[17:14:16][CPU] [Ciclo 1] FETCH-DECODE: Op=03 Dir=0 Val=00000 en PC=00005
+[17:14:16][CPU] [Ciclo 0] Guardando contexto en la pila...
+[17:14:16][CPU] [Ciclo 0] Contexto guardado exitosamente
+[17:14:16][INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
+[17:14:16][SIS] Proceso (ID: 2) cambio estado EN EJECUCION -> LISTO
+[17:14:16][SIS] Proceso (ID: 3) cambio estado LISTO -> EN EJECUCION
+[17:14:16][SIS] >>> FIN QUANTUM: Saliente Proceso ID 2 | Entrante Proceso ID 3 <<<
+[17:14:16][CPU] [Ciclo 0] Retornando de interrupcion de Quantum (Contexto provisto por Despachador BCP)
+[17:14:16][CPU] [Ciclo 0] DEBUG: Fin por instruccion NULA. ProcID: 3, PC Logico: 4, DirFisica: 474
+[17:14:16][CPU] [Ciclo 0] Detectada ultima instruccion, fin de programa
+[17:14:16][CPU] [Ciclo 0] Guardando contexto en la pila...
+[17:14:16][CPU] [Ciclo 0] Contexto guardado exitosamente
+[17:14:16][SIS] Proceso (ID: 3) cambio estado EN EJECUCION -> TERMINADO
+[17:14:16][SIS] Proceso (ID: 1) cambio estado LISTO -> EN EJECUCION
+[17:14:16][SIS] >>> DESPACHO: Entrante Proceso ID 1 <<<
+[17:14:16][CPU] [Ciclo 0] FETCH-DECODE: Op=00 Dir=1 Val=00001 en PC=00006
+[17:14:16][CPU] [Ciclo 0] SUM: 5 + 1 = 6
+[17:14:16][CPU] [Ciclo 1] FETCH-DECODE: Op=05 Dir=0 Val=00020 en PC=00007
+[17:14:16][CPU] [Ciclo 0] Guardando contexto en la pila...
+[17:14:16][CPU] [Ciclo 0] Contexto guardado exitosamente
+[17:14:16][INT] Ciclo 0 | Interrupcion 3 (RECUPERABLE): Temporizador (Clock)
+[17:14:16][SIS] Proceso (ID: 1) cambio estado EN EJECUCION -> LISTO
+[17:14:16][SIS] Proceso (ID: 2) cambio estado LISTO -> EN EJECUCION
+[17:14:16][SIS] >>> FIN QUANTUM: Saliente Proceso ID 1 | Entrante Proceso ID 2 <<<
+[17:14:16][CPU] [Ciclo 0] Retornando de interrupcion de Quantum (Contexto provisto por Despachador BCP)
+[17:14:16][CPU] [Ciclo 0] DEBUG: Fin por instruccion NULA. ProcID: 2, PC Logico: 6, DirFisica: 391
+[17:14:16][CPU] [Ciclo 0] Detectada ultima instruccion, fin de programa
+[17:14:16][CPU] [Ciclo 0] Guardando contexto en la pila...
+[17:14:16][CPU] [Ciclo 0] Contexto guardado exitosamente
+[17:14:16][SIS] Proceso (ID: 2) cambio estado EN EJECUCION -> TERMINADO
+[17:14:16][SIS] Proceso (ID: 1) cambio estado LISTO -> EN EJECUCION
+[17:14:16][SIS] >>> DESPACHO: Entrante Proceso ID 1 <<<
+[17:14:16][CPU] [Ciclo 0] FETCH-DECODE: Op=03 Dir=0 Val=00000 en PC=00008
+[17:14:16][CPU] [Ciclo 1] DEBUG: Fin por instruccion NULA. ProcID: 1, PC Logico: 9, DirFisica: 309
+[17:14:16][CPU] [Ciclo 1] Detectada ultima instruccion, fin de programa
+[17:14:16][CPU] [Ciclo 1] Guardando contexto en la pila...
+[17:14:16][CPU] [Ciclo 1] Contexto guardado exitosamente
+[17:14:16][SIS] Proceso (ID: 1) cambio estado EN EJECUCION -> TERMINADO
+[17:14:16][CPU] [Ciclo 1] No hay mas procesos. Todas las tareas finalizadas.
+[17:14:16][CPU] [Ciclo 1] Devolviendo control a la consola
+[17:14:16][CPU] Ejecucion normal finalizada
+[17:14:16][SIS] Ejecucion planificada finalizada
+[17:23:08][SIS] Comando recibido: reg
+[17:31:28][SIS] Comando recibido: memstat
+[17:31:44][SIS] Comando recibido: memestat
+[20:08:16][SIS] Comando recibido: salir
+[20:08:16][SIS] Usuario solicito apagar/salir
+[20:08:16][SIS] Finalizando maquina virtual
+ FIN DEL LOG
+ Finalizado: 20:08:16

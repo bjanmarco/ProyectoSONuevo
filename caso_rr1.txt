@@ -1,12 +1,13 @@
 _start 1
 .NumeroPalabras 9
 .NombreProg rr_largo
-04100000
-00100001
-00100001
-00100001
-00100001
-00100001
-00100001
-05000020
-13000000
+
+04100000    // load constante 0 (AC=0)
+00100001    // add constante 1 (AC=1)
+00100001    // add constante 1 (AC=2)
+00100001    // add constante 1 (AC=3)
+00100001    // add constante 1 (AC=4)
+00100001    // add constante 1 (AC=5)
+00100001    // add constante 1 (AC=6)
+05000020    // store AC en dir 20
+13000000    // exit (Syscall Legacy)

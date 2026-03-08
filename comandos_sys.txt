@@ -1,2 +1,0 @@
-ejecutar caso_syscalls.txt
-salir

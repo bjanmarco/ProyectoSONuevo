@@ -1,5 +1,0 @@
-_start 1
-.NumeroPalabras 2
-.NombreProg InvOp
-99000000
-13000000

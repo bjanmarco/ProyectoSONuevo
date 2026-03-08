@@ -1,7 +1,0 @@
-memestat
-ps
-ejecutar caso_syscalls.txt
-memestat
-reiniciar
-ps
-apagar

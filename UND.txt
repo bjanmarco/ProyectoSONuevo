@@ -1,4 +1,0 @@
-_start 1 
-.NumeroPalabras 1 
-.NombreProg prueba 
-26000000

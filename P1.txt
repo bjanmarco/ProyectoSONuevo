@@ -1,8 +1,0 @@
-_start 1
-.NumeroPalabras 5
-.NombreProg P1
-04100000 //load 0
-00100001 //sum 1
-05000100 //str 100
-27000001 //j 1
-13000000 //svc

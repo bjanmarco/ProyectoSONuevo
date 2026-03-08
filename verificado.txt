@@ -1,1 +1,0 @@
-Fase 2 verificacion concluida con estabilidad en entorno de usuario
