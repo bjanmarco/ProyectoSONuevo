@@ -1,68 +1,68 @@
 #include <stdio.h>
 #include <string.h>
 #include "../include/memoria.h"
+#include "../include/procesos.h"
+#include "../include/logger.h"
 
-// arreglo de memoria principal que son 2000 palabras (0-299 SO, 300-1999 Usuario)
+// RAM Principal
 Palabra memoriaPrincipal[TAMANO_MEMORIA];
 
-// semaforo para arbitraje del bus
+// Semaforo Bus
 sem_t bloqueoBus;
 
-// inicializa la memoria principal del sistema
+// Inicializar RAM
 void inicializarMemoria() {
     int i;
-    for (i = 0; i < TAMANO_MEMORIA; i++) { // limpia todas las posiciones de memoria estableciendo el signo y los dígitos a 0
-        memoriaPrincipal[i].signo = 0;     // porque asi nos aseguramos que no haya basura
+    for (i = 0; i < TAMANO_MEMORIA; i++) {
+        memoriaPrincipal[i].signo = 0;
         memoriaPrincipal[i].digitos = 0;
     }
-    sem_init(&bloqueoBus, 0, 1); // inicializa el semáforo para el control de acceso al bus de datos
-    printf("[MEMORIA] Inicializada: %d posiciones, SO: 0-%d, Usuario: %d-%d\n", 
-           TAMANO_MEMORIA, TAMANO_MEMORIA_SO - 1, INICIO_MEMORIA_USUARIO, TAMANO_MEMORIA - 1);
-            // muestra un mensaje sobre el tamaño y partición de la memoria
+    sem_init(&bloqueoBus, 0, 1);
+    logMemoria("Inicializada: %d posiciones, SO: %d-%d, Usuario: %d-%d", 
+           TAMANO_MEMORIA, 0, TAMANO_MEMORIA_SO - 1, INICIO_MEMORIA_USUARIO, TAMANO_MEMORIA - 1);
 }
 
-// finaliza el uso de la memoria y libera recursos
+// Finalizar memoria
 void finalizarMemoria() {
-    sem_destroy(&bloqueoBus); // destruye el semáforo de bloqueo del bus utilizado para la exclusión mutua.
-    printf("[MEMORIA] Recursos liberados\n");
+    sem_destroy(&bloqueoBus);
+    logMemoria("Recursos liberados");
 }
 
-// lee una palabra de la memoria en la dirección especificada.
+// Leer palabra
 Palabra leerMemoria(int direccion) {
     Palabra resultado = {0, 0};
-    if (direccion < 0 || direccion >= TAMANO_MEMORIA) { // valida que la dirección esté dentro de los límites
-        printf("[MEMORIA] ERROR: Lectura en direccion invalida %d\n", direccion);
+    if (direccion < 0 || direccion >= TAMANO_MEMORIA) {
+        logMemoria("ERROR: Lectura en direccion invalida %d", direccion);
         return resultado;
     }
-    // utiliza un semáforo para garantizar acceso exclusivo al bus durante la lectura
-    sem_wait(&bloqueoBus); // espera a que el semáforo esté disponible
+
+    sem_wait(&bloqueoBus);
     resultado = memoriaPrincipal[direccion];
-    sem_post(&bloqueoBus); // libera el semáforo
+    sem_post(&bloqueoBus);
     return resultado;
 }
-// escribe una palabra en la memoria en la dirección especificada
+
+// Escribir palabra
 void escribirMemoria(int direccion, Palabra dato) {
-    if (direccion < 0 || direccion >= TAMANO_MEMORIA) { // valida que la dirección esté dentro de los límites
-        printf("[MEMORIA] ERROR: Escritura en direccion invalida %d\n", direccion);
+    if (direccion < 0 || direccion >= TAMANO_MEMORIA) {
+        logMemoria("ERROR: Escritura en direccion invalida %d", direccion);
         return;
     }
-    // utiliza un semáforo para garantizar acceso exclusivo al bus durante la escritura
-    sem_wait(&bloqueoBus); // espera a que el semáforo esté disponible
+
+    sem_wait(&bloqueoBus);
     memoriaPrincipal[direccion] = dato;
-    sem_post(&bloqueoBus); // libera el semáforo
+    sem_post(&bloqueoBus);
 }
 
-// ============================================
-// Funciones Diagnostico (Comandos Fase 2)
-// ============================================
+// Funciones de Diagnostico
 
 void mostrarEstadisticasMemoria() {
     int celdasOcupadasSO = 0;
     int celdasOcupadasUsuario = 0;
 
     for (int i = 0; i < TAMANO_MEMORIA; i++) {
-        // "Ocupada" = si el opcode no es 0
-        if (palabraAEntero(memoriaPrincipal[i]) != 0) {
+        // Celda ocupada si es != 0
+        if (memoriaPrincipal[i].signo != 0 || memoriaPrincipal[i].digitos != 0) {
             if (i < TAMANO_MEMORIA_SO) {
                 celdasOcupadasSO++;
             } else {
@@ -74,10 +74,10 @@ void mostrarEstadisticasMemoria() {
     int totalOcupadas = celdasOcupadasSO + celdasOcupadasUsuario;
     float porcentajeUso = ((float)totalOcupadas / TAMANO_MEMORIA) * 100.0f;
 
-    printf("\n=== ESTADISTICAS DE MEMORIA (memestat) ===\n");
-    printf("Tamano Total de RAM : %d Palabras\n", TAMANO_MEMORIA);
-    printf("Tamano Particion SO : %d Palabras | Posiciones con Dato: %d\n", TAMANO_MEMORIA_SO, celdasOcupadasSO);
-    printf("Tamano Zona Usuario : %d Palabras | Posiciones con Dato: %d\n", TAMANO_MEMORIA - TAMANO_MEMORIA_SO, celdasOcupadasUsuario);
-    printf("Porcentaje de Uso   : %.2f%%\n", porcentajeUso);
-    printf("==========================================\n\n");
+    printf("\nESTADISTICAS DE MEMORIA (memstat)\n");
+    printf("================================================================================\n");
+    printf("Tamano Total de RAM        : %d Palabras\n", TAMANO_MEMORIA);
+    printf("Zona del Kernel (0-%d)    : %d Palabras | Posiciones ocupadas: %d\n", TAMANO_MEMORIA_SO - 1, TAMANO_MEMORIA_SO, celdasOcupadasSO);
+    printf("Zona de Usuario (%d-%d) : %d Palabras | Posiciones ocupadas: %d\n", INICIO_MEMORIA_USUARIO, TAMANO_MEMORIA - 1, TAMANO_MEMORIA - TAMANO_MEMORIA_SO, celdasOcupadasUsuario);
+    printf("Porcentaje de Uso Total    : %.2f%%\n\n", porcentajeUso);
 }

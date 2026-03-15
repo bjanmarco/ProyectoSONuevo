@@ -4,28 +4,38 @@
 #include "../include/procesos.h"
 #include "../include/logger.h"
 #include "../include/cpu.h" // Para constantes de offset
+#include "../include/memoria.h" // Para leerMemoria en comando ps
 
-// Variables globales para la gestion
+// Variables globales
 BCP tablaProcesos[MAX_PROCESOS];
 int numProcesosActivos = 0;
 int procesoEnEjecucion = -1; 
-int contadorIdProcesos = 1; // Para que los IDs no empiecen desde 0 si no queremos
+int contadorIdProcesos = 1;
 
-// Inicializa toda la tabla vacia limpiando posibles reciduos de basura de memoria (RAM)
+// Inicializar tabla de procesos
 void inicializarGestorProcesos() {
     numProcesosActivos = 0;
     procesoEnEjecucion = -1;
     contadorIdProcesos = 1;
     
-    // Limpiamos los BCP
+    // Limpiar BCP
     for (int i = 0; i < MAX_PROCESOS; i++) {
         tablaProcesos[i].id = -1;
-        tablaProcesos[i].estado = ESTADO_TERMINADO; // Consideramos "vacio" a TERMINADO por ahora
+        tablaProcesos[i].estado = ESTADO_TERMINADO;
         tablaProcesos[i].ticsDormido = 0;
     }
 }
 
-// Retorna el indice disponible o -1 si ya llegamos a los 20 maximmos
+// Limpiar procesos terminados de la vista
+void limpiarProcesosTerminados() {
+    for (int i = 0; i < MAX_PROCESOS; i++) {
+        if (tablaProcesos[i].estado == ESTADO_TERMINADO) {
+            tablaProcesos[i].id = -1;
+        }
+    }
+}
+
+// Retornar indice disponible
 int buscarEspacioLibreBCP() {
     if (numProcesosActivos >= MAX_PROCESOS) return -1;
     
@@ -37,53 +47,60 @@ int buscarEspacioLibreBCP() {
     return -1;
 }
 
-// Pide memoria para el PCB (teorica porque ya esta asignada en la tabla)
-// Crea el proceso en estado listoy devuelve su ID
-int crearProceso(const char *nombrePrograma, int dirBase, int dirLimite, int pcInicial) {
+// Crear nuevo proceso
+int crearProceso(const char *nombrePrograma, int dirBase, int dirLimite, int pcInicial, int tamanoCodigo, int requiereKernel) {
     if (numProcesosActivos >= MAX_PROCESOS) {
         printf("[ERROR SO] No hay mas espacio en la tabla de procesos (Maximo estricto 20).\n");
         return -1;
     }
     
     int indiceLibre = buscarEspacioLibreBCP();
-    if(indiceLibre == -1) return -1; // Seguridad
+    if(indiceLibre == -1) return -1;
     
     BCP *nuevoP = &tablaProcesos[indiceLibre];
     
     nuevoP->id = contadorIdProcesos++;
     strncpy(nuevoP->nombre, nombrePrograma, MAX_NOMBRE_PROGRAMA - 1);
-    nuevoP->nombre[MAX_NOMBRE_PROGRAMA - 1] = '\0'; // Asegurar que sea str de C valido
+    nuevoP->nombre[MAX_NOMBRE_PROGRAMA - 1] = '\0';
     
     nuevoP->direccionBase = dirBase;
     nuevoP->direccionLimite = dirLimite;
+    nuevoP->tamanoCodigo = tamanoCodigo;
+    nuevoP->requiereKernel = requiereKernel;
     
-    // Configurar contexto inicial basico para que empiece a correr como si estuviera despertandose
-    nuevoP->contexto.psw.modoOperacion = MODO_USUARIO;
-    nuevoP->contexto.psw.habilitarInterrupciones = INT_HABILITADAS; // Debe empezar asumiendo ints activas
-    nuevoP->contexto.psw.codigoCondicion = CC_CERO; // EVITA QUE BASURA DE MEMORIA DESBORDE LA CODIFICACION LIMITADA DE PSW
+    // Configurar contexto inicial basico
+    if (requiereKernel) {
+        nuevoP->contexto.psw.modoOperacion = MODO_KERNEL;
+        logSistema("Proceso [%s] (ID: %d) configurado para inyectarse en MODO KERNEL (Contiene intruccion privilegiada)", nuevoP->nombre, nuevoP->id);
+    } else {
+        nuevoP->contexto.psw.modoOperacion = MODO_USUARIO;
+        logSistema("Proceso [%s] (ID: %d) configurado para MODO USUARIO", nuevoP->nombre, nuevoP->id);
+    }
+    
+    nuevoP->contexto.psw.habilitarInterrupciones = INT_HABILITADAS;
+    nuevoP->contexto.psw.codigoCondicion = CC_CERO;
     nuevoP->contexto.psw.pc = pcInicial; 
     nuevoP->contexto.rb = dirBase;
     nuevoP->contexto.rl = dirLimite;
-    // Nueva Pila por proceso
-    nuevoP->contexto.rx = dirLimite; // Pila inactiva hasta dirLimite
-    nuevoP->contexto.sp = dirLimite; // SP empieza alli y va bajando
 
-    // Todo proceso empieza logicamente en NUEVO y seguidamente a LISTO según teoría clasica de S.O
+    nuevoP->contexto.rx = dirLimite;
+    nuevoP->contexto.sp = dirLimite;
+
+    // Iniciar el estado logico
     nuevoP->estado = ESTADO_NUEVO;
     
-    // LOG OBLIGATORIO - REGLA 11 DE LAS INSTRUCCIONES
-    // "Los cambios de estado deben ser consistentes y registrarse obligatoriamente en un archivo log."
+    // Registrar en log
     logSistema("Proceso [%s] (ID: %d) creado -> Estado NUEVO", nuevoP->nombre, nuevoP->id);
     
     numProcesosActivos++;
     
-    // Inmediatamente lo pasamos a LISTO
+    // Pasar a LISTO
     cambiarEstadoProceso(nuevoP->id, ESTADO_LISTO);
     
     return nuevoP->id;
 }
 
-// Devuelve un array char para imprimir humanamente al log
+// Retornar nombre del estado
 const char* nombreDelEstado(int estado) {
     switch (estado) {
         case ESTADO_NUEVO: return "NUEVO";
@@ -95,36 +112,41 @@ const char* nombreDelEstado(int estado) {
     }
 }
 
-// Cambiar estado e imprimir un Log del Sistema
+// Cambiar estado
 void cambiarEstadoProceso(int idProceso, int nuevoEstado) {
     for (int i = 0; i < MAX_PROCESOS; i++) {
         if (tablaProcesos[i].id == idProceso) {
             
-            // Si el proceso ya esta liquidado, no dejas revivir
+            // Evitar modificaciones si ya termino
             if (tablaProcesos[i].estado == ESTADO_TERMINADO) return;
             
             int viejoEstado = tablaProcesos[i].estado;
             tablaProcesos[i].estado = nuevoEstado;
             
-            // "Los cambios de estado deben registrarse OBLIGATORIAMENTE en un archivo log."
+            // Log
             logSistema("Proceso (ID: %d) cambio estado %s -> %s", 
                        idProceso, nombreDelEstado(viejoEstado), nombreDelEstado(nuevoEstado));
                        
             if (nuevoEstado == ESTADO_TERMINADO) {
                 numProcesosActivos--;
-                // Si el SO muere aca se limpia, pero por ahora solo le damos estado Termina
             }
             return;
         }
     }
 }
 
-// Vacia un BCP y lo deja para un futuro proceso (aunque sus archivos existiran en RAM hasta limpiarse)
+// Destruir proceso
 void destruirProceso(int idProceso) {
+    for (int i = 0; i < MAX_PROCESOS; i++) {
+        if (tablaProcesos[i].id == idProceso) {
+            // Mantener datos para el reporte final
+            break;
+        }
+    }
     cambiarEstadoProceso(idProceso, ESTADO_TERMINADO);
 }
 
-// Tick global del SO para despertar procesos despues de su Syscall 4
+// Actualizar procesos dormidos
 void actualizarProcesosDormidos() {
     for (int i = 0; i < MAX_PROCESOS; i++) {
         if (tablaProcesos[i].estado == ESTADO_DORMIDO) {
@@ -138,11 +160,9 @@ void actualizarProcesosDormidos() {
     }
 }
 
-// Analiza si existen hilos en cola o dormidos, o si todo murio.
+// Verificar si hay procesos vivos
 int hayProcesosVivos() {
     for (int i = 0; i < MAX_PROCESOS; i++) {
-        // En este OS con tablas estaticas los vacios no tienen estado -1 sino inicializados en algo extra.
-        // Pero `id` al inicio se asignan incrementalmente. NumProcesosActivos dicta el limite creado de hecho:
         if (i < numProcesosActivos) {
             if (tablaProcesos[i].estado != ESTADO_TERMINADO) return 1;
         }
@@ -150,28 +170,25 @@ int hayProcesosVivos() {
     return 0;
 }
 
-// -------------------------------------------------------------
-// PLANIFICADOR (POLITICA: Round Robin)
-// Decide estrictamente cual proceso le toca. Independiente de como se intercambia.
-// Retorna -1 si no hay ninguno listo
-// -------------------------------------------------------------
+// Planificador Round Robin
+// Retorna ID del proceso o -1 si no hay listos
 int planificarSiguienteProceso() {
     int idCandidato = -1;
-    int inicioBusqueda = 0; // Por defecto empezamos desde el principio de la tabla
+    int inicioBusqueda = 0;
 
-    // Si ya hay alguien corriendo, buscamos el siguiente empezando desde donde esta
+    // Buscar a partir del proceso en ejecucion
     if (procesoEnEjecucion != -1) {
         for (int i = 0; i < MAX_PROCESOS; i++) {
             if (tablaProcesos[i].id == procesoEnEjecucion) {
-                inicioBusqueda = (i + 1) % MAX_PROCESOS; // Circularidad (+1 mod 20)
+                inicioBusqueda = (i + 1) % MAX_PROCESOS;
                 break;
             }
         }
     }
 
-    // Damos una vuelta completa buscando el proximo que este LISTO
+    // Buscar proximo proceso LISTO
     for (int j = 0; j < MAX_PROCESOS; j++) {
-        int indiceEvaluar = (inicioBusqueda + j) % MAX_PROCESOS; // circularidad
+        int indiceEvaluar = (inicioBusqueda + j) % MAX_PROCESOS;
         
         if (tablaProcesos[indiceEvaluar].id != -1 && 
             tablaProcesos[indiceEvaluar].estado == ESTADO_LISTO) {
@@ -180,9 +197,7 @@ int planificarSiguienteProceso() {
         }
     }
     
-    // Si no encontro a ningun otro proceso LISTO, pero el actual sigue EN_EJECUCION,
-    // significa que es el unico proceso en el sistema y deberia seguir corriendo el mismo
-    // a menos que este terminando o durmiendo.
+    // Verificar si el actual es el unico habilitado para seguir ejecutandose
     if (idCandidato == -1 && procesoEnEjecucion != -1) {
         for (int i = 0; i < MAX_PROCESOS; i++) {
             if (tablaProcesos[i].id == procesoEnEjecucion && 
@@ -196,10 +211,7 @@ int planificarSiguienteProceso() {
     return idCandidato;
 }
 
-// -------------------------------------------------------------
-// DESPACHADOR (MECANISMO)
-// Saca de la CPU a quien este corriendo, guarda contexto y mete al nuevo.
-// -------------------------------------------------------------
+// Despachar proceso (Intercambio de contexto)
 void despacharProceso(int idNuevoProceso) {
     int indiceViejo = -1;
     if (procesoEnEjecucion != -1) {
@@ -216,11 +228,7 @@ void despacharProceso(int idNuevoProceso) {
                         cambiarEstadoProceso(procesoEnEjecucion, ESTADO_LISTO);
                     }
 
-                    // --- EXTRACCION DE ESTADO REAL ---
-                    // manejarInterrupcion() hizo guardarContexto() apilando 6 words en RAM local.
-                    // Para llevarlo al PCB y limpiar la CPU, desapilamos logicamente como si fueramos
-                    // el CPU de nuevo, para que el Proceso Saliente quede intacto en su PCB.
-                    
+                    // Extraccion de estado real
                     decodificarPsw(leerMemoria(registrosCpu.sp)); registrosCpu.sp++;
                     int spOriginal = palabraAEntero(leerMemoria(registrosCpu.sp)); registrosCpu.sp++;
                     registrosCpu.rx = palabraAEntero(leerMemoria(registrosCpu.sp)); registrosCpu.sp++;
@@ -228,10 +236,10 @@ void despacharProceso(int idNuevoProceso) {
                     registrosCpu.rb = palabraAEntero(leerMemoria(registrosCpu.sp)); registrosCpu.sp++;
                     registrosCpu.ac = leerMemoria(registrosCpu.sp); registrosCpu.sp++;
                     
-                    // Asegurar SP al original para ese proceso antes del Crash de interrupcion
+                    // Restaurar SP
                     registrosCpu.sp = spOriginal;
                     
-                    // Guardamos contexto limpio en BCP ahora que desempaquetamos la Interrupcion
+                    // Guardar contexto en BCP
                     tablaProcesos[i].contexto = registrosCpu;
                 }
                 break;
@@ -239,14 +247,13 @@ void despacharProceso(int idNuevoProceso) {
         }
     }
 
-    // 2. Si nos piden despachar "nadie", solo la CPU queda ociosa.
+    // Cpu ocioso
     if (idNuevoProceso == -1) {
         procesoEnEjecucion = -1;
-        // La simulacion frenara o hara NOPs
         return;
     }
 
-    // 3. Montar al nuevo proceso
+    // Montar nuevo proceso
     int indiceNuevo = -1;
     for (int i = 0; i < MAX_PROCESOS; i++) {
         if (tablaProcesos[i].id == idNuevoProceso) {
@@ -256,14 +263,11 @@ void despacharProceso(int idNuevoProceso) {
     }
 
     if (indiceNuevo != -1) {
-        // Enviar a ejecucion
         cambiarEstadoProceso(idNuevoProceso, ESTADO_EJECUCION);
         
-        // Cargar todo su contexto personal a los `registrosCpu` (la maquina viva)
         registrosCpu = tablaProcesos[indiceNuevo].contexto;
         
-        // --- Limpieza vital de estado de simulador ---
-        // Evita que un timer o error pase a heredarse al nuevo proceso
+        // Limpieza fundamental
         extern int interrupcionPendiente;
         extern int interrupcionesPendientes[NUM_INTERRUPCIONES];
         extern int contadorCiclos;
@@ -274,56 +278,70 @@ void despacharProceso(int idNuevoProceso) {
         contadorCiclos = 0;
         reiniciarDeteccionBucle();
         
-        // Actualizamos variable de control
         procesoEnEjecucion = idNuevoProceso;
 
-        // "El archivo log debe registrar CADA vez que se agota el quantum, 
-        // detallando el ID del proceso saliente y del proceso entrante" (REGLA INSTRUCCIONES)
         if (indiceViejo != -1 && tablaProcesos[indiceViejo].id != idNuevoProceso && tablaProcesos[indiceViejo].estado == ESTADO_LISTO) {
             logSistema(">>> FIN QUANTUM: Saliente Proceso ID %d | Entrante Proceso ID %d <<<", 
                        tablaProcesos[indiceViejo].id, idNuevoProceso);
         } else {
-             // Por si el CPU estaba vacio o el saliente murio (TERMINO/DORMIDO) no fue por Quantum, fue por ceder CPU
              logSistema(">>> DESPACHO: Entrante Proceso ID %d <<<", idNuevoProceso);
         }
     }
 }
 
-// ============================================
-// Funciones Diagnostico (Comandos Fase 2)
-// ============================================
+// Diagnostico 
+// Fase 2 - Comandos
 
 void mostrarTablaProcesos() {
-    printf("\n=== TABLA DE PROCESOS (ps) ===\n");
-    printf("ID\t| ESTADO\t| USO MEMORIA\t| NOMBRE PROG\n");
-    printf("------------------------------------------------------\n");
+    printf("\nPROCESOS EN EL SISTEMA\n");
+    printf("====================================================================================================\n");
+    printf("%-4s | %-10s | %-9s | %-16s | %-13s | %-5s | %-5s | %s\n", 
+           "PID", "ESTADO", "% MEMORIA", "RANGO (BASE-LIM)", "INSTRUCCIONES", "DATOS", "TOTAL", "NOMBRE");
+    printf("----------------------------------------------------------------------------------------------------\n");
     
     int procesosMostrados = 0;
     for (int i = 0; i < MAX_PROCESOS; i++) {
-        if (tablaProcesos[i].id != -1 && tablaProcesos[i].estado != ESTADO_TERMINADO) {
+        if (tablaProcesos[i].id != -1) {
             char descEstado[20];
             switch (tablaProcesos[i].estado) {
                 case ESTADO_NUEVO: strcpy(descEstado, "NUEVO"); break;
                 case ESTADO_LISTO: strcpy(descEstado, "LISTO"); break;
-                case ESTADO_EJECUCION: strcpy(descEstado, "EN_EJECUCION"); break;
+                case ESTADO_EJECUCION: strcpy(descEstado, "EN EJECUCION"); break;
                 case ESTADO_DORMIDO: strcpy(descEstado, "DORMIDO"); break;
+                case ESTADO_TERMINADO: strcpy(descEstado, "TERMINADO"); break;
                 default: strcpy(descEstado, "DESCONOCIDO"); break;
             }
             
-            int tamanoProceso = tablaProcesos[i].direccionLimite - tablaProcesos[i].direccionBase;
-            float porcMem = ((float)tamanoProceso / TAMANO_MEMORIA) * 100.0f;
+            int instrucciones = tablaProcesos[i].tamanoCodigo;
+            int datosOcupados = 0;
             
-            printf("%d\t| %s\t| %.2f%%\t| %s\n", 
+            int inicioDatos = tablaProcesos[i].direccionBase + instrucciones;
+            int limite = tablaProcesos[i].direccionLimite;
+            
+            for (int j = inicioDatos; j <= limite; j++) {
+                Palabra p = leerMemoria(j);
+                if (p.signo != 0 || p.digitos != 0) {
+                    datosOcupados++;
+                }
+            }
+            
+            int subtotal = instrucciones + datosOcupados;
+            float porcMem = ((float)subtotal / TAMANO_MEMORIA) * 100.0f;
+            
+            printf("%-4d | %-10s | %0.2f%%     | [%04d - %04d]    | %-13d | %-5d | %-5d | %s\n", 
                    tablaProcesos[i].id, 
                    descEstado, 
                    porcMem, 
+                   tablaProcesos[i].direccionBase, 
+                   tablaProcesos[i].direccionLimite, 
+                   instrucciones, 
+                   datosOcupados, 
+                   subtotal,
                    tablaProcesos[i].nombre);
             procesosMostrados++;
         }
     }
     
-    if (procesosMostrados == 0) {
-        printf("No hay procesos activos en el sistema.\n");
-    }
-    printf("==============================\n\n");
+    printf("====================================================================================================\n");
+    printf("Total de procesos: %d\n\n", procesosMostrados);
 }

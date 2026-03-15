@@ -1,0 +1,6 @@
+_start 1
+.NumeroPalabras 3
+.NombreProg t_kernel
+004100010
+018000000
+013000000

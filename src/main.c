@@ -1,5 +1,4 @@
-// punto de entrada principal de la maquina virtual
-// implementa la consola interactiva para cargar y ejecutar programas en modo normal o debug
+// Punto de entrada principal y consola de la maquina virtual
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,15 +12,11 @@
 #include "../include/procesos.h"
 
 
-// constantes de la consola
-#define MAX_COMANDO 256     // tamanio maximo de un comando
-#define MAX_RUTA 256        // tamanio maximo de una ruta de archivo
+#define MAX_COMANDO 256
+#define MAX_RUTA 256
 
-// variables globales
-// modo de ejecucion: 0 = normal (run), 1 = debug
 int modoDebug = 0;
 
-// referencias externas a registros y variables del CPU
 extern Registros registrosCpu;
 extern int cpuEjecutando;
 extern int contadorCiclos;
@@ -37,7 +32,6 @@ int main(int argc, char *argv[]) {
     char comando[MAX_COMANDO];
     int salir = 0;
     
-    // ignorar argumentos por ahora
     (void)argc;
     (void)argv;
     
@@ -48,8 +42,6 @@ int main(int argc, char *argv[]) {
     }
     logSistema("Maquina virtual iniciada");
     
-    // inicializar todos los componentes de hardware
-    // inicializar todos los componentes de hardware (Simulacion de Bootstrap)
     printf("\n INICIANDO BOOTSTRAP DEL SO \n\n");
     printf("[BOOTSTRAP] Cargando nucleo y componentes\n");
     
@@ -105,7 +97,7 @@ int main(int argc, char *argv[]) {
         
         // procesar comandos
         
-        // comando: salir / exit / quit / apagar
+        // Comando salir
         if (strcmp(comando, "salir") == 0 || 
             strcmp(comando, "exit") == 0 || 
             strcmp(comando, "quit") == 0 ||
@@ -137,9 +129,11 @@ int main(int argc, char *argv[]) {
             printf("[BOOTSTRAP] Sistema Operativo reiniciado exitosamente.\n\n");
         }
         
-        // comando: ejecutar <prog1> <prog2> ... <progn>
+        // Comando ejecutar
         else if (strncmp(comando, "ejecutar ", 9) == 0) {
-            // strdup copia el comando para poder usar strtok (que modifica la cadena original)
+            // Limpiar historial de procesos anteriores en PS
+            limpiarProcesosTerminados();
+            
             char *copiaComando = strdup(comando + 9);
             char *programa = strtok(copiaComando, " ");
             
@@ -151,7 +145,7 @@ int main(int argc, char *argv[]) {
                 programa[strcspn(programa, "\r\n")] = '\0';
                 
                 if (strlen(programa) > 0) {
-                    // Agregar extension .txt si no la tiene para mayor simplicidad
+                    // Agregar extension .txt si no la tiene
                     char rutaConExtension[MAX_RUTA];
                     if (strstr(programa, ".txt") == NULL) {
                         snprintf(rutaConExtension, sizeof(rutaConExtension), "%s.txt", programa);
@@ -162,12 +156,12 @@ int main(int argc, char *argv[]) {
                     logLoader("Usuario solicito cargar programa: %s", rutaConExtension);
                     printf("[SISTEMA] Cargando %s...\n", rutaConExtension);
 
-                    // NUEVA ARQUITECTURA: 1. Archivo -> Disco Duro  2. Disco Duro -> RAM
+                    // Arquitectura de Memoria (Disco -> RAM)
                     
-                    // Paso 1: Intentar cargarlo en Disco (Si ya está, lo omite amigablemente)
+                    // Paso 1: Intentar cargarlo en Disco
                     if (cargarProgramaEnDisco(rutaConExtension) == 0) {
                         
-                        // Paso 2: Volcarlo explícitamente desde el Disco hacia la Memoria RAM
+                        // Paso 2: Volcarlo desde el Disco hacia la Memoria RAM
                         if (cargarProgramaEnMemoria(rutaConExtension) == 0) {
                             programasCargadosExtosamente++;
                         } else {
@@ -182,22 +176,20 @@ int main(int argc, char *argv[]) {
             }
             free(copiaComando);
 
-            // Si al menos 1 programa cargo bien, arrancamos la ejecucion del RoundRobin (Planificador)
+            // Iniciar RoundRobin
             if (programasCargadosExtosamente > 0) {
                 printf("[SISTEMA] %d programa(s) cargado(s) exitosamente.\n", programasCargadosExtosamente);
                 printf("[SISTEMA] Iniciando ejecucion (Turno Rotatorio)...\n\n");
                 logSistema("Iniciando ejecucion de CPU Planificada");
                 
-                // Limpiar la CPU para que no intente ejecutar basura del ciclo o ejecución pasada
+                // Limpiar contexto muerto
                 extern int procesoEnEjecucion;
-                procesoEnEjecucion = -1; // Obligamos a que el SO no guarde un "Contexto Muerto"
+                procesoEnEjecucion = -1;
                 int primerProceso = planificarSiguienteProceso();
                 if (primerProceso != -1) {
                     despacharProceso(primerProceso);
                 }
                 
-                // NOTA: Aca mas adelante llamaremos a nuestro planificador (cpu.c o planificador.c)
-                // Por ahora usamos la forma clasica de cpu
                 ejecutarModoNormal();
                 
                 printf("\n[SISTEMA] Ejecucion finalizada.\n\n");
@@ -207,18 +199,18 @@ int main(int argc, char *argv[]) {
             }
         }
         
-        // comando: registros / reg
+        // Comando registros
         else if (strcmp(comando, "registros") == 0 || 
                  strcmp(comando, "reg") == 0) {
             mostrarEstadoRegistros();
         }
         
-        // comando: memestat
-        else if (strcmp(comando, "memestat") == 0) {
+        // Comando memstat
+        else if (strcmp(comando, "memstat") == 0) {
             mostrarEstadisticasMemoria();
         }
         
-        // comando: ps
+        // Comando ps
         else if (strcmp(comando, "ps") == 0) {
             mostrarTablaProcesos();
         }
@@ -244,13 +236,12 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-// funciones de interfaz
-// muestra la lista de comandos disponibles.
+// Funciones de interfaz
 void mostrarAyuda() {
     printf("\n");
     printf(" COMANDOS DISPONIBLES \n");
     printf(" ejecutar <p1> <p2>...  - Carga los programas en BCP y los ejecuta\n");
-    printf(" memestat               - Estadisticas de uso de la Memoria Principal\n");
+    printf(" memstat                - Estadisticas de uso de la Memoria Principal\n");
     printf(" ps                     - Muestra la tabla de procesos del Sistema\n");
     printf(" registros (reg)        - Muestra los registros                   \n");
     printf(" reiniciar              - Reinicia la maquina virtual             \n");
@@ -259,7 +250,6 @@ void mostrarAyuda() {
     printf("\n");
 }
 
-// muestra el estado actual de todos los registros del CPU.
 void mostrarEstadoRegistros() {
     printf("\n");
     printf(" REGISTROS DEL CPU \n");
@@ -286,9 +276,8 @@ void mostrarEstadoRegistros() {
     printf("\n");
 }
 
-// funciones de ejecucion
+// Funciones de ejecucion
 
-// ejecuta el programa cargado en modo normal (sin pausas)
 int ejecutarModoNormal() {
     logCpu("Iniciando ejecucion en modo normal");
     
@@ -299,7 +288,6 @@ int ejecutarModoNormal() {
     return 0;
 }
 
-// ejecuta el programa cargado en modo debug (paso a paso).
 int ejecutarModoDebug() {
     char entrada[MAX_COMANDO];
     int continuar = 1;
@@ -324,7 +312,7 @@ int ejecutarModoDebug() {
                registrosCpu.psw.codigoCondicion);
         printf("──────────────────────────────────────────────\n");
         
-        // bucle para procesar comandos hasta que el usuario quiera avanzar
+        // Comandos del depurador
             while (1) {
                 printf("[DEBUG] > ");
                 fflush(stdout);

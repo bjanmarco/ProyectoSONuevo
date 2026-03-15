@@ -1,0 +1,77 @@
+Arquitectura y Procesos (BCP)
+
+    El sistema debe manejar un máximo estricto de 20 procesos concurrentes.
+
+    Se debe bloquear el ingreso de nuevos procesos si no hay espacio suficiente en memoria principal o disco.
+
+    El Bloque de Control de Proceso (BCP) debe almacenar la identificación del proceso, el estado del procesador y el control del proceso.
+
+    Los estados básicos obligatorios son cinco: NUEVO, LISTO, EN EJECUCION, DORMIDO y TERMINADO.
+
+    Los cambios de estado deben ser consistentes y registrarse obligatoriamente en un archivo log.
+
+    El código de los procesos se indica por la línea de comandos, se carga en un área del disco duro y de ahí pasa a la memoria principal.
+
+    Los procesos terminados mantienen su código en regiones del disco; si se vuelven a ejecutar, no es necesario volver a cargarlos en el disco.
+
+    La información y formato para identificar procesos en el disco es de libre diseño.
+
+Planificación de la CPU
+
+    La política estricta de planificación es turno rotatorio (Round Robin).
+
+    El quantum de tiempo está fijado en dos (2) tics de reloj.
+
+    La política de planificación debe ser independiente del mecanismo de despacho.
+
+    El archivo log debe registrar cada vez que se agota el quantum, detallando el ID del proceso saliente y del proceso entrante.
+
+Interrupciones
+
+    Se debe implementar un vector de interrupciones.
+
+    Cada posición del vector debe tener información de dónde se encuentra la rutina manejadora, la cual debe estar implementada en el código fuente.
+
+    Se permite el anidamiento de interrupciones, pero debe haber consistencia en el orden de las mismas.
+
+Memoria Principal
+
+    El esquema de gestión de memoria es particionamiento estático.
+
+    Cada proceso tendrá una partición de tamaño definido y un par de registros (base y límite) para asegurar que cada acceso sea válido.
+
+    La única manera en que un proceso accede a su pila es exclusivamente con las instrucciones de máquina PSH y POP.
+
+Llamadas al Sistema (Syscalls)
+
+    El Sistema Operativo debe atender estas interrupciones por servicios y devolver el resultado al proceso.
+
+    El código de la llamada se pasa en el registro AC.
+
+    Todos los parámetros son enteros y se pasan a través de la pila, apilándose de izquierda a derecha.
+
+    Llamada 1 - termina_prog (estado): Termina el programa. Los valores posibles de estado son 0 si termina normalmente, o -1 en caso contrario.
+
+    Llamada 2 - imprime_pantalla (valor): Muestra por pantalla el valor.
+
+    Llamada 3 - leer_pantalla (): Al retorno de la llamada, se almacena en el registro AC la lectura.
+
+    Llamada 4 - Dormir (tics): El proceso se duerme por esa cantidad de tics de reloj.
+
+Comandos de Consola del Usuario
+
+    apagar: Apagar el sistema.
+
+    reiniciar: Reiniciar el sistema.
+
+    ejecutar <prog1> <prog2>... <prog n>: Ejecutar una lista de procesos. Es indispensable que todo proceso mandado a ejecutar se cargue de disco a memoria.
+
+    memestat: Muestra por pantalla de forma clara el contenido de toda la memoria y el porcentaje de uso de la misma.
+
+    ps: Muestra por pantalla de forma clara todos los procesos en el sistema, indicando ID, estado, porcentaje de memoria que utiliza y nombre de programa asociado.
+
+Requisitos Técnicos y de Entrega
+
+    Las estructuras de datos son libres para alcanzar los objetivos.
+
+    El código debe estar extensamente comentado y estructurado apropiadamente.

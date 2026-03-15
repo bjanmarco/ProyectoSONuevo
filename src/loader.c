@@ -1,5 +1,4 @@
-// este modulo lee los archivos de programa 
-// y los carga en la memoria RAM para que el CPU los pueda ejecutar.
+// Carga los archivos de programa en la memoria RAM
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,9 +11,7 @@
 #include "../include/disco.h"
 #include "../include/procesos.h"
 
-// siguiente direccion de memoria disponible para cargar programas
-// inicia en 300 
-int siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO;
+// Asignacion dinamica de memoria
 
 // Indice global de la posicion en disco para grabar el siguiente archivo
 int siguienteCilindroDisponible = 0;
@@ -24,27 +21,58 @@ int siguienteSectorDisponible = 0;
 // Arreglo FAT
 DirectorioPrograma directorioDisco[MAX_PROGRAMAS_DISCO];
 
-// esta es el struct de la info el programa.
+// Informacion del programa actual
 InfoPrograma programaActual;
 
-// referencia externa a los registros del CPU (definidos en cpu.c)
+// Referencia externa a los registros del CPU
 extern Registros registrosCpu;
 
-// funcion externa para reiniciar deteccion de bucles (definida en cpu.c)
+// Funcion externa para reiniciar deteccion de bucles
 extern void reiniciarDeteccionBucle();
 
 static void limpiarProgramaActual() {
-    // memeset es para llenar la memoria con 0 y asi borras lo que tenia antes
     memset(programaActual.nombre, 0, MAX_NOMBRE_PROGRAMA);
     programaActual.lineaInicio = 0;
     programaActual.numeroPalabras = 0;
     programaActual.direccionBase = 0;
     programaActual.direccionLimite = 0;
-    //y el struct queda listo para guarda la nueva info del siguiente programa
+}
+
+
+// Busca un hueco continuo en la RAM que no colisione con procesos activos
+static int buscarEspacioLibreMemoria(int tamañoNecesario) {
+    int inicioBusqueda = INICIO_MEMORIA_USUARIO;
+    int limiteMaximo = TAMANO_MEMORIA - 1;
+
+    while (inicioBusqueda <= limiteMaximo - tamañoNecesario) {
+        int solapamiento = 0;
+        int proximoSalto = inicioBusqueda + 1;
+
+        for (int i = 0; i < MAX_PROCESOS; i++) {
+            // Solo considerar procesos VIVOS (NUEVO, LISTO, EJECUCION, DORMIDO)
+            if (tablaProcesos[i].id != -1 && tablaProcesos[i].estado != ESTADO_TERMINADO) {
+                int pBase = tablaProcesos[i].direccionBase;
+                int pLim = tablaProcesos[i].direccionLimite;
+                
+                // Verificar si hay interseccion de intervalos
+                if (inicioBusqueda <= pLim && (inicioBusqueda + tamañoNecesario - 1) >= pBase) {
+                    solapamiento = 1;
+                    if (pLim + 1 > proximoSalto) {
+                        proximoSalto = pLim + 1; // Saltar todo el bloque ocupado
+                    }
+                }
+            }
+        }
+        
+        if (!solapamiento) {
+            return inicioBusqueda;
+        }
+        inicioBusqueda = proximoSalto;
+    }
+    return -1; // No hay espacio continuo
 }
 
 void inicializarLoader() {
-    siguienteDireccionDisponible = INICIO_MEMORIA_USUARIO; // partimos de la base del usuario
     siguienteCilindroDisponible = 0;
     siguientePistaDisponible = 0;
     siguienteSectorDisponible = 0;
@@ -55,9 +83,7 @@ void inicializarLoader() {
     }
 
     limpiarProgramaActual();
-    logLoader("Loader inicializado. Direccion base RAM: %d", 
-    // usamos el Macro El atajo para imprimir el valor de la siguiente direccion disponible
-           siguienteDireccionDisponible);
+    logLoader("Loader inicializado con algoritmo First-Fit (Reaprovechamiento). Direccion base dinamica.");
 }
 
 int cargarProgramaEnDisco(const char *rutaArchivo) {
@@ -65,7 +91,7 @@ int cargarProgramaEnDisco(const char *rutaArchivo) {
     char linea[MAX_LINEA];
     int lineaInicio = -1, numeroPalabrasHeader = -1;
     char nombrePrograma[MAX_NOMBRE_PROGRAMA] = "";
-    int resultado = 1;  // por defecto error, cambia a 0 si todo sale bien
+    int resultado = 1;
 
     // Buscar espacio libre en el Directorio FAT
     int indiceFAT = -1;
@@ -74,9 +100,8 @@ int cargarProgramaEnDisco(const char *rutaArchivo) {
             indiceFAT = i;
             break;
         } else if (strcmp(directorioDisco[i].nombre, rutaArchivo) == 0) {
-            // Ya está listado en el FAT
             logLoader("Programa '%s' ya existe en Disco Duro. Omitiendo carga.", rutaArchivo);
-            return 0; // Exito automatico
+            return 0;
         }
     }
 
@@ -91,20 +116,20 @@ int cargarProgramaEnDisco(const char *rutaArchivo) {
 
     logLoader("Intentando cargar: %s", rutaArchivo);
 
-    // abrir el archivo
-    archivo = fopen(rutaArchivo, "r"); // abrimos leyendo
+    // Abrir el archivo
+    archivo = fopen(rutaArchivo, "r");
     if (archivo == NULL) {
         logLoader("ERROR: No se pudo abrir el archivo %s", rutaArchivo);
         return 1;
     }
 
-    // leer y validar el archivo
+    // Leer y validar el archivo
     while (fgets(linea, MAX_LINEA, archivo) != NULL) {
-        linea[strcspn(linea, "\n")] = '\0';  // eliminar salto de linea
+        linea[strcspn(linea, "\r\n")] = '\0';
 
-        // ignorar lineas vacias y comentarios explicitos al inicio
+        // Ignorar lineas vacias y comentarios
         if (strlen(linea) == 0 || linea[0] == '/' || linea[0] == '#' || linea[0] == '.' || strncmp(linea, "_start", 6) == 0) {
-            // parsear metadata especial antes de continuar
+            // Parsear metadata especial
             if (strncmp(linea, "_start", 6) == 0) {
                 sscanf(linea, "_start %d", &lineaInicio);
             } else if (strncmp(linea, ".NumeroPalabras", 15) == 0) {
@@ -112,12 +137,12 @@ int cargarProgramaEnDisco(const char *rutaArchivo) {
             } else if (strncmp(linea, ".NombreProg", 11) == 0) {
                 sscanf(linea, ".NombreProg %49s", nombrePrograma);
             } else if (linea[0] == '.' && strlen(linea) == 1) {
-                break; // fin de programa
+                break;
             }
             continue;
         }
         
-        // Conversión Robusta (Estilo strtoll ignorará sufijos y comentarios tabulados)
+        // Conversion Robusta
         long valorLargo = strtol(linea, NULL, 10);
         
         // Determinar signo manual o extraido del strtol
@@ -144,8 +169,8 @@ int cargarProgramaEnDisco(const char *rutaArchivo) {
         instruccion.digitos = (int)valorLargo;
 
 
-        // agregar al buffer dinamico (expandir si es necesario)
-        if (bufferLen >= bufferCap) { // el len son las que llevamos y el cap las totales
+        // Agregar al buffer dinamico
+        if (bufferLen >= bufferCap) {
             int nuevaCap = (bufferCap == 0) ? 16 : bufferCap * 2;
             Palabra *tmp = (Palabra*)realloc(buffer, nuevaCap * sizeof(Palabra));
             if (tmp == NULL) {
@@ -176,8 +201,8 @@ int cargarProgramaEnDisco(const char *rutaArchivo) {
         goto cleanup;
     }
 
-    // --- NUEVO: VOLCADO A DISCO DURO (VERIFICANDO CAPACIDAD) ---
-    // Chequear si caben las instrucciones
+    // Volcado a disco duro
+    // Verificar capacidad
     int requeridosSectores = bufferLen;
     int disponible = (DISCO_CILINDROS * DISCO_PISTAS * DISCO_SECTORES) - 
                      ((siguienteCilindroDisponible * DISCO_PISTAS * DISCO_SECTORES) + 
@@ -198,14 +223,14 @@ int cargarProgramaEnDisco(const char *rutaArchivo) {
     directorioDisco[indiceFAT].sectorInicio = siguienteSectorDisponible;
     directorioDisco[indiceFAT].ocupado = 1;
 
-    // Escribir cada instrucción al disco simulado
+    // Escribir instrucciones al disco
     for (int i = 0; i < bufferLen; i++) {
         char tempStr[10];
         snprintf(tempStr, sizeof(tempStr), "%d%08d", buffer[i].signo, buffer[i].digitos);
         
         escribirSectorDisco(siguientePistaDisponible, siguienteCilindroDisponible, siguienteSectorDisponible, tempStr);
         
-        // Aritmetica de cabezales del disco
+        // Secuencia de disco
         siguienteSectorDisponible++;
         if (siguienteSectorDisponible >= DISCO_SECTORES) {
             siguienteSectorDisponible = 0;
@@ -218,10 +243,8 @@ int cargarProgramaEnDisco(const char *rutaArchivo) {
     }
 
     logLoader("Carga en Disco completa. (FAT_ID: %d)", indiceFAT);
-    resultado = 0; // Exito
+    resultado = 0;
 
-
-// usamos la salida correcta 
 cleanup:
     if (archivo != NULL) fclose(archivo);
     free(buffer);
@@ -245,22 +268,31 @@ int cargarProgramaEnMemoria(const char *nombrePrograma) {
 
     DirectorioPrograma progFAT = directorioDisco[logicoID];
 
-    int direccionBase = siguienteDireccionDisponible;
-    int direccionFin = direccionBase + progFAT.numeroPalabras;
 
-    // Verificar memoria
-    if (direccionFin >= TAMANO_MEMORIA - 50) {
-        logLoader("ERROR: Memoria RAM insuficiente para volcar %s desde Disco.", nombrePrograma);
-        printf("[LOADER] ERROR: No hay espacio seguro. Pilas en riesgo.\n");
+    int tamPart = progFAT.numeroPalabras + 20; 
+    tamPart = (tamPart > 85) ? tamPart : 85;
+
+    int direccionBase = buscarEspacioLibreMemoria(tamPart);
+    if (direccionBase == -1) {
+        logLoader("ERROR: Memoria RAM insuficiente y fragmentada para volcar %s desde Disco.", nombrePrograma);
+        printf("[LOADER] ERROR: No hay espacio seguro libre para el programa. Esperando finalizaciones.\n");
         return 1;
     }
 
-    // Volcado de Disco Duro a RAM
+    int direccionFin = direccionBase + tamPart - 1;
+    int contienePrivilegiada = 0;
+
+    // Limpiar hueco en RAM
+    Palabra p0 = {0, 0};
+    for (int i = direccionBase; i <= direccionFin; i++) {
+        escribirMemoria(i, p0);
+    }
+
     int s_cilindro = progFAT.cilindroInicio;
     int s_pista = progFAT.pistaInicio;
     int s_sector = progFAT.sectorInicio;
     
-    char sectorCrudo[TAMANO_SECTOR + 1]; // +1 para el nulo terminador 
+    char sectorCrudo[TAMANO_SECTOR + 1];
 
     for (int i = 0; i < progFAT.numeroPalabras; i++) {
         leerSectorDisco(s_pista, s_cilindro, s_sector, sectorCrudo);
@@ -270,9 +302,20 @@ int cargarProgramaEnMemoria(const char *nombrePrograma) {
         p.signo = sectorCrudo[0] - '0';
         p.digitos = atoi(&sectorCrudo[1]);
         
+        // Extraccion de opcode
+        char opcodeStr[3];
+        opcodeStr[0] = sectorCrudo[1];
+        opcodeStr[1] = sectorCrudo[2];
+        opcodeStr[2] = '\0';
+        
+        int opcodeLeido = atoi(opcodeStr);
+        if (esInstruccionPrivilegiada(opcodeLeido)) {
+            contienePrivilegiada = 1;
+        }
+        
         escribirMemoria(direccionBase + i, p);
 
-        // Aritmetica manual de avance
+        // Avance de disco
         s_sector++;
         if (s_sector >= DISCO_SECTORES) {
             s_sector = 0;
@@ -284,36 +327,30 @@ int cargarProgramaEnMemoria(const char *nombrePrograma) {
         }
     }
 
-    // Instancia del proceso BCP
-    int tamPart = progFAT.numeroPalabras + 20; 
-    tamPart = (tamPart > 85) ? tamPart : 85;
 
-    int nuevoPID = crearProceso(progFAT.nombre, direccionBase, direccionBase + tamPart - 1, progFAT.lineaInicio - 1);
+    int nuevoPID = crearProceso(progFAT.nombre, direccionBase, direccionFin, progFAT.lineaInicio - 1, progFAT.numeroPalabras, contienePrivilegiada);
     
     if (nuevoPID != -1) {
-        logLoader("Programa '%s' pasado de DISCO a RAM con PID %d", progFAT.nombre, nuevoPID);
-        siguienteDireccionDisponible = direccionBase + tamPart;
+        logLoader("Programa '%s' volcado de DISCO a RAM [%d-%d] con PID %d", progFAT.nombre, direccionBase, direccionFin, nuevoPID);
         return 0; 
     } else {
-        logLoader("ERROR RAM: Fallo creacion BCP.");
+        logLoader("ERROR RAM: Fallo creacion BCP (Supero limite de procesos vivos).");
         return 1; 
     }
 }
 
 void prepararEjecucion() {
-    // Reiniciar deteccion de bucles infinitos para evitar falsos positivos
+    // Reiniciar deteccion de bucles
     reiniciarDeteccionBucle();
 
     // Establecer registros de proteccion
     registrosCpu.rb = programaActual.direccionBase;
-    registrosCpu.rl = TAMANO_MEMORIA - 50; // RL = limite maximo de usuario (protegiendo ultimos 50 de Pila)
+    registrosCpu.rl = programaActual.direccionLimite;
 
-    // Establecer PC en la linea de inicio (direccion logica)
-    // Ya se convirtio a base 0 en cargarPrograma
+    // Establecer PC en la linea de inicio logica
     registrosCpu.psw.pc = programaActual.lineaInicio;
 
     // Establecer pila al FINAL de la memoria
-    // La pila crece hacia abajo (SP--), por lo que iniciamos en la ultima posicion
     registrosCpu.rx = TAMANO_MEMORIA - 1;
     registrosCpu.sp = TAMANO_MEMORIA - 1;
 
@@ -326,10 +363,7 @@ void prepararEjecucion() {
     registrosCpu.ac.signo = 0;
     registrosCpu.ac.digitos = 0;
 
-    // limpieza de estado de interrupciones
-    // es fundamental limpiar cualquier interrupcion pendiente de ejecuciones anteriores
-    // (especialmente si terminaron por error fatal), de lo contrario se dispararian
-    // en el primer ciclo del nuevo programa.
+    // Limpiar interrupciones
     interrupcionPendiente = 0;
     for(int i=0; i<NUM_INTERRUPCIONES; i++) interrupcionesPendientes[i] = 0;
 
